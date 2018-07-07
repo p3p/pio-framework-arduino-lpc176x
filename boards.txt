@@ -1,0 +1,10 @@
+# See: http://code.google.com/p/arduino/wiki/Platforms
+
+menu.cpu=Processor
+
+##############################################################
+
+lpc1768.name=LPC176x
+lpc1768.build.core=arduino
+lpc1768.build.variant=lpc1768
+
