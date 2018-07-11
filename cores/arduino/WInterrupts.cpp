@@ -16,9 +16,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifdef TARGET_LPC1768
+#include <LPC17xx.h>
 
-#include "../../inc/MarlinConfig.h"
+#include <Arduino.h>
 
 #define GNUM 31
 
@@ -158,5 +158,3 @@ extern "C" void EINT3_IRQHandler(void) {
     fall2 -= _BV(bitloc);
   }
 }
-
-#endif // TARGET_LPC1768

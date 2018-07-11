@@ -19,14 +19,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-#ifdef TARGET_LPC1768
-
+#include <cstdint>
+#include <const_functions.h>
 #include <pinmapping.h>
 
 // Get the digital pin for an analog index
 pin_t analogInputToDigitalPin(const int8_t p) {
-  return (WITHIN(p, 0, NUM_ANALOG_INPUTS) ? adc_pin_table[p] : P_NC);
+  return (util::within(p, 0, NUM_ANALOG_INPUTS) ? adc_pin_table[p] : P_NC);
 }
 
 // Return the index of a pin number
@@ -59,7 +58,5 @@ bool INTERRUPT_PIN(const pin_t p) {
 
 // Get the pin number at the given index
 pin_t GET_PIN_MAP_PIN(const int16_t ind) {
-  return WITHIN(ind, 0, NUM_DIGITAL_PINS - 1) ? pin_map[ind] : P_NC;
+  return util::within(ind, 0, NUM_DIGITAL_PINS - 1) ? pin_map[ind] : P_NC;
 }
-
-#endif // TARGET_LPC1768

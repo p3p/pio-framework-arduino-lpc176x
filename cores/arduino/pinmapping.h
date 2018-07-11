@@ -23,14 +23,10 @@
 #ifndef _PINMAPPING_H_
 #define _PINMAPPING_H_
 
+#include <const_functions.h>
 #include <stdint.h>
 
 typedef int16_t pin_t;
-
-#define LPC_PORT_OFFSET         (0x0020)
-#define LPC_PIN(pin)            (1UL << pin)
-#define LPC_GPIO(port)          ((volatile LPC_GPIO_TypeDef *)(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port))
-
 
 #define PORT_0  000
 #define PORT_1  001
@@ -185,18 +181,10 @@ constexpr int8_t LPC1768_PIN_ADC(const pin_t pin) { return (int8_t)((pin >> 10) 
 
 // Pin index for M43 and M226
 constexpr pin_t pin_map[] = {
-    P0_00, P0_01,
-                  P0_02, P0_03,
-                                P0_04, P0_05, P0_06, P0_07,
-    P0_08, P0_09,
-                  P0_10, P0_11,
-                                P_NC,  P_NC,  P_NC,
-                                                     P0_15,
-    P0_16,
-           P0_17, P0_18, P0_19, P0_20, P0_21, P0_22, P0_23,
-    P0_24, P0_25, P0_26, P0_27, P0_28,
-                                       P0_29, P0_30,
-                                                   P_NC,
+  P0_00, P0_01, P0_02, P0_03, P0_04, P0_05, P0_06, P0_07,
+  P0_08, P0_09, P0_10, P0_11, P_NC,  P_NC,  P_NC,  P0_15,
+  P0_16, P0_17, P0_18, P0_19, P0_20, P0_21, P0_22, P0_23,
+  P0_24, P0_25, P0_26, P0_27, P0_28, P0_29, P0_30, P_NC,
 
   P1_00, P1_01, P_NC,  P_NC,  P1_04, P_NC,  P_NC,  P_NC,
   P1_08, P1_09, P1_10, P_NC,  P_NC,  P_NC,  P1_14, P1_15,
@@ -220,12 +208,10 @@ constexpr pin_t pin_map[] = {
 };
 
 //todo: temp marlin count implementation
-#define LPC_COUNT(a) (sizeof(a)/sizeof(*a))
-constexpr uint8_t NUM_DIGITAL_PINS = LPC_COUNT(pin_map);
+constexpr uint8_t NUM_DIGITAL_PINS = util::count(pin_map);
 
 constexpr pin_t adc_pin_table[] = {
-  P0_23, P0_24, P0_25, P0_26, P1_30, P1_31,
-    P0_03, P0_02
+  P0_23, P0_24, P0_25, P0_26, P1_30, P1_31, P0_03, P0_02
 };
 
   #define NUM_ANALOG_INPUTS 8
@@ -258,5 +244,22 @@ pin_t GET_PIN_MAP_PIN(const int16_t ind);
 
 // Parse a G-code word into a pin index
 int16_t PARSED_PIN_INDEX(const char code, const int16_t dval);
+
+bool useable_hardware_PWM(pin_t pin);
+
+#define LPC_PORT_OFFSET         (0x0020)
+#define LPC_PIN(pin)            (1UL << pin)
+#define LPC_GPIO(port)          ((volatile LPC_GPIO_TypeDef *)(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port))
+
+#define SET_DIR_INPUT(IO)       (LPC_GPIO(LPC1768_PIN_PORT(IO))->FIODIR &= ~LPC_PIN(LPC1768_PIN_PIN(IO)))
+#define SET_DIR_OUTPUT(IO)      (LPC_GPIO(LPC1768_PIN_PORT(IO))->FIODIR |=  LPC_PIN(LPC1768_PIN_PIN(IO)))
+
+#define SET_MODE(IO, mode)      (pin_mode((LPC1768_PIN_PORT(IO), LPC1768_PIN_PIN(IO)), mode))
+
+#define WRITE_PIN_SET(IO)       (LPC_GPIO(LPC1768_PIN_PORT(IO))->FIOSET = LPC_PIN(LPC1768_PIN_PIN(IO)))
+#define WRITE_PIN_CLR(IO)       (LPC_GPIO(LPC1768_PIN_PORT(IO))->FIOCLR = LPC_PIN(LPC1768_PIN_PIN(IO)))
+
+#define READ_PIN(IO)            ((LPC_GPIO(LPC1768_PIN_PORT(IO))->FIOPIN & LPC_PIN(LPC1768_PIN_PIN(IO))) ? 1 : 0)
+#define WRITE_PIN(IO,V)         ((V) ? WRITE_PIN_SET(IO) : WRITE_PIN_CLR(IO))
 
 #endif // _PINMAPPING_H_

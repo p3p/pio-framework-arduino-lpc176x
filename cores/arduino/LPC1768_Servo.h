@@ -36,27 +36,55 @@
 
 #include <stdint.h>
 
-  class Servo {
-    public:
-      Servo();
-      int8_t attach(const int pin);            // attach the given pin to the next free channel, set pinMode, return channel number (-1 on fail)
-      int8_t attach(const int pin, const int min, const int max); // as above but also sets min and max values for writes.
-      void detach();
-      void write(int value);             // if value is < 200 it is treated as an angle, otherwise as pulse width in microseconds
-      void writeMicroseconds(int value); // write pulse width in microseconds
-      void move(const int value);        // attach the servo, then move to value
-                                         // if value is < 200 it is treated as an angle, otherwise as pulse width in microseconds
-                                         // if DEACTIVATE_SERVOS_AFTER_MOVE wait SERVO_DELAY, then detach
-      int read();                        // returns current pulse width as an angle between 0 and 180 degrees
-      int readMicroseconds();            // returns current pulse width in microseconds for this servo (was read_us() in first release)
-      bool attached();                   // return true if this servo is attached, otherwise false
+// Macros
+//values in microseconds
+#define MIN_PULSE_WIDTH       544     // the shortest pulse sent to a servo
+#define MAX_PULSE_WIDTH      2400     // the longest pulse sent to a servo
+#define DEFAULT_PULSE_WIDTH  1500     // default pulse width when servo is attached
+#define REFRESH_INTERVAL    20000     // minimum time to refresh servos in microseconds
 
-    private:
-      uint8_t servoIndex;               // index into the channel data for this servo
-      int min;
-      int max;
-  };
+#define MAX_SERVOS             4
 
-  #define HAL_SERVO_LIB Servo
+#define INVALID_SERVO         255     // flag indicating an invalid servo index
+
+
+// Types
+
+typedef struct {
+  uint8_t nbr        : 8 ;            // a pin number from 0 to 254 (255 signals invalid pin)
+  uint8_t isActive   : 1 ;            // true if this channel is enabled, pin not pulsed if false
+} ServoPin_t;
+
+typedef struct {
+  ServoPin_t Pin;
+  unsigned int pulse_width;           // pulse width in microseconds
+} ServoInfo_t;
+
+// Global variables
+
+extern uint8_t ServoCount;
+extern ServoInfo_t servo_info[MAX_SERVOS];
+
+
+class Servo {
+  public:
+    Servo();
+    int8_t attach(const int pin);            // attach the given pin to the next free channel, set pinMode, return channel number (-1 on fail)
+    int8_t attach(const int pin, const int min, const int max); // as above but also sets min and max values for writes.
+    void detach();
+    void write(int value);             // if value is < 200 it is treated as an angle, otherwise as pulse width in microseconds
+    void writeMicroseconds(int value); // write pulse width in microseconds
+    void move(const int value);        // attach the servo, then move to value
+                                       // if value is < 200 it is treated as an angle, otherwise as pulse width in microseconds
+                                       // if DEACTIVATE_SERVOS_AFTER_MOVE wait SERVO_DELAY, then detach
+    int read();                        // returns current pulse width as an angle between 0 and 180 degrees
+    int readMicroseconds();            // returns current pulse width in microseconds for this servo (was read_us() in first release)
+    bool attached();                   // return true if this servo is attached, otherwise false
+
+  private:
+    uint8_t servoIndex;               // index into the channel data for this servo
+    int min;
+    int max;
+};
 
 #endif // LPC1768_SERVO_H

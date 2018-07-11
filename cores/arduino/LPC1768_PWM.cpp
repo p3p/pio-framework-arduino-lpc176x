@@ -69,8 +69,6 @@
  *  PWM1.6   P2_05   RAMPS_D10_PIN       HEATER_BED_PIN
  */
 
-#ifdef TARGET_LPC1768
-
 #include <lpc17xx_pinsel.h>
 #include "LPC1768_PWM.h"
 #include <Arduino.h>
@@ -534,8 +532,6 @@ HAL_PWM_TIMER_ISR {
   exit_PWM_ISR:
   return;
 }
-#endif
-
 
 /////////////////////////////////////////////////////////////////
 /////////////////  HARDWARE FIRMWARE INTERACTION ////////////////
