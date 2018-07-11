@@ -30,19 +30,14 @@
  * http://arduiniana.org.
  */
 
-#ifdef TARGET_LPC1768
-
 //
 // Includes
 //
-//#include <WInterrupts.h>
-#include "../../inc/MarlinConfig.h"
-#include "../Delay.h"
 #include <stdint.h>
 #include <stdarg.h>
 #include <Arduino.h>
 #include <pinmapping.h>
-#include "fastio.h"
+#include <time.h>
 #include "SoftwareSerial.h"
 
 void GpioEnableInt(uint32_t port, uint32_t pin, uint32_t mode);
@@ -80,7 +75,7 @@ static const DELAY_TABLE table[] = {
 //
 
 inline void SoftwareSerial::tunedDelay(const uint32_t count) {
-  DELAY_US(count);
+  time::delay_us(count);
 }
 
 // This function sets the current object as the "listening"
@@ -325,5 +320,3 @@ int16_t SoftwareSerial::peek() {
   // Read from "head"
   return _receive_buffer[_receive_buffer_head];
 }
-
-#endif // TARGET_LPC1768

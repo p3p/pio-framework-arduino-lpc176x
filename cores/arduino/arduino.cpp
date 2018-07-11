@@ -23,11 +23,14 @@
 
 #include <lpc17xx_pinsel.h>
 #include <pinmapping.h>
+#include <time.h>
+#include <const_functions.h>
 
 #include <Arduino.h>
 #include <adc.h>
 #include "LPC1768_PWM.h"
 
+extern uint64_t _millis;
 
 // Interrupts
 void cli(void) { __disable_irq(); } // Disable
@@ -39,19 +42,19 @@ void _delay_ms(const int delay_ms) {
 }
 
 uint32_t millis() {
-  return 0;//_millis;
+  return _millis;
 }
 
 // This is required for some Arduino libraries we are using
 void delayMicroseconds(uint32_t us) {
-  // DELAY_US(us);
+   time::delay_us(us);
 }
 
-extern "C" void delay(const int msec) {
-  //volatile millis_t end = _millis + msec;
+void delay(const int msec) {
+  volatile uint32_t end = _millis + msec;
   SysTick->VAL = SysTick->LOAD; // reset systick counter so next systick is in exactly 1ms
                                 // this could extend the time between systicks by upto 1ms
-  //while PENDING(_millis, end) __WFE();
+  while(util::pending(_millis, end)) __WFE();
 }
 
 // IO functions

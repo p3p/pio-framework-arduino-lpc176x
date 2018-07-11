@@ -620,10 +620,7 @@ void SystemInit (void)
 
 }
 
- __attribute__ ((weak)) void SystemPostInit()
-{
-
-}
+ __attribute__ ((weak)) void SystemPostInit() {}
 
 /**
  * @}

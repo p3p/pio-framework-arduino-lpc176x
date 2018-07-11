@@ -329,7 +329,7 @@ Status I2S_FreqConfig(LPC_I2S_TypeDef *I2Sx, uint32_t Freq, uint8_t TRMode) {
 	uint32_t x, y;
 	uint64_t divider;
 	uint16_t dif;
-	uint16_t x_divide, y_divide;
+	uint16_t x_divide, y_divide = 0;
 	uint16_t err, ErrorOptimal = 0xFFFF;
 
 	uint32_t N;

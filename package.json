@@ -2,5 +2,5 @@
     "name": "framework-arduino-lpc176x",
     "description": "Arduino Wiring-based Framework (LPC176x CMSIS 5)",
     "url": "https://www.arduino.cc/en/Main/Software",
-    "version": "0.00.01"
+    "version": "0.0.1"
 }

@@ -17,8 +17,6 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifdef TARGET_LPC1768
-
 extern "C" {
   #include <stdlib.h>
   #include <string.h>
@@ -215,5 +213,3 @@ int TwoWire::peek(void) {
 // Preinstantiate Objects //////////////////////////////////////////////////////
 
 TwoWire Wire = TwoWire();
-
-#endif // TARGET_LPC1768
