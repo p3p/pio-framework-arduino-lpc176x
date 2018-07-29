@@ -158,9 +158,7 @@ public:
     }
 
     RxQueueWritePos = RxQueueReadPos = 0;
-    #if TXB_SIZE > 0
-      TxQueueWritePos = TxQueueReadPos = 0;
-    #endif
+    TxQueueWritePos = TxQueueReadPos = 0;
 
     // Save the configured baudrate
     Baudrate = baudrate;
@@ -201,7 +199,6 @@ public:
   }
 
   size_t write(uint8_t send) {
-  #if TXB_SIZE > 0
     size_t bytes = 0;
     uint32_t fifolvl = 0;
 
@@ -232,16 +229,12 @@ public:
     UART_IntConfig(UARTx, UART_INTCFG_THRE, ENABLE);
 
     return bytes;
-  #else
-    return UART_Send(UARTx, &send, 1, BLOCKING);
-  #endif
+   // return UART_Send(UARTx, &send, 1, BLOCKING); // no tx buffer
   }
 
   void flushTX() {
-    #if TXB_SIZE > 0
-      // Wait for the tx buffer and FIFO to drain
-      while (TxQueueWritePos != TxQueueReadPos && UART_CheckBusy(UARTx) == SET);
-    #endif
+    // Wait for the tx buffer and FIFO to drain
+    while (TxQueueWritePos != TxQueueReadPos && UART_CheckBusy(UARTx) == SET);
   }
 
   size_t available() {
@@ -307,28 +300,26 @@ public:
       Status |= 0x100; // Bit 9 as the CTI error
     }
 
-    #if TXB_SIZE > 0
-      if (IIRValue == UART_IIR_INTID_THRE) {
-        // Disable THRE interrupt
-        UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
+    if (IIRValue == UART_IIR_INTID_THRE) {
+      // Disable THRE interrupt
+      UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
 
-        // Wait for FIFO buffer empty
-        while (UART_CheckBusy(UARTx) == SET);
+      // Wait for FIFO buffer empty
+      while (UART_CheckBusy(UARTx) == SET);
 
-        // Transfer up to UART_TX_FIFO_SIZE bytes of data
-        for (int i = 0; i < UART_TX_FIFO_SIZE && TxQueueWritePos != TxQueueReadPos; i++) {
-          // Move a piece of data into the transmit FIFO
-          if (UART_Send(UARTx, &TxBuffer[TxQueueReadPos], 1, NONE_BLOCKING)) {
-            TxQueueReadPos = (TxQueueReadPos+1) % TXB_SIZE;
-          } else break;
-        }
-
-        // If there is no more data to send, disable the transmit interrupt - else enable it or keep it enabled
-        if (TxQueueWritePos == TxQueueReadPos) {
-          UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
-        } else UART_IntConfig(UARTx, UART_INTCFG_THRE, ENABLE);
+      // Transfer up to UART_TX_FIFO_SIZE bytes of data
+      for (int i = 0; i < UART_TX_FIFO_SIZE && TxQueueWritePos != TxQueueReadPos; i++) {
+        // Move a piece of data into the transmit FIFO
+        if (UART_Send(UARTx, &TxBuffer[TxQueueReadPos], 1, NONE_BLOCKING)) {
+          TxQueueReadPos = (TxQueueReadPos+1) % TXB_SIZE;
+        } else break;
       }
-    #endif
+
+      // If there is no more data to send, disable the transmit interrupt - else enable it or keep it enabled
+      if (TxQueueWritePos == TxQueueReadPos) {
+        UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
+      } else UART_IntConfig(UARTx, UART_INTCFG_THRE, ENABLE);
+    }
   }
 };
 
