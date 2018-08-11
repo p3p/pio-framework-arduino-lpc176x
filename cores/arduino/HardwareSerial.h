@@ -32,7 +32,6 @@ extern "C" {
   #include "lpc17xx_pinsel.h"
 }
 
-
 #if !defined(SERIAL_TX_BUFFER_SIZE)
   #define SERIAL_TX_BUFFER_SIZE 64
 #endif
