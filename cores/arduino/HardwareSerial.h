@@ -23,6 +23,7 @@
 #ifndef HardwareSerial_h
 #define HardwareSerial_h
 
+#include <array>
 #include <stdarg.h>
 #include <stdio.h>
 #include <Stream.h>
@@ -46,17 +47,17 @@ private:
 
   uint32_t Baudrate;
   uint32_t Status;
-  uint8_t RxBuffer[RXB_SIZE];
+  std::array<uint8_t, RXB_SIZE> RxBuffer;
   uint32_t RxQueueWritePos;
   uint32_t RxQueueReadPos;
-  uint8_t TxBuffer[TXB_SIZE];
+  std::array<uint8_t, TXB_SIZE> TxBuffer;
   uint32_t TxQueueWritePos;
   uint32_t TxQueueReadPos;
 
 public:
   HardwareSerial(LPC_UART_TypeDef *UARTx)
-    : UARTx(UARTx) ,
-    Baudrate(0)
+    : UARTx(UARTx)
+    , Baudrate(0)
     , RxQueueWritePos(0)
     , RxQueueReadPos(0)
     , TxQueueWritePos(0)
@@ -157,7 +158,9 @@ public:
     }
 
     RxQueueWritePos = RxQueueReadPos = 0;
-    TxQueueWritePos = TxQueueReadPos = 0;
+    if constexpr (TXB_SIZE > 0) {
+      TxQueueWritePos = TxQueueReadPos = 0;
+    }
 
     // Save the configured baudrate
     Baudrate = baudrate;
@@ -198,42 +201,47 @@ public:
   }
 
   size_t write(uint8_t send) {
-    size_t bytes = 0;
-    uint32_t fifolvl = 0;
+    if constexpr (TXB_SIZE > 0) {
+      size_t bytes = 0;
+      uint32_t fifolvl = 0;
 
-    // If the Tx Buffer is full, wait for space to clear
-    if ((TxQueueWritePos+1) % TXB_SIZE == TxQueueReadPos) flushTX();
+      // If the Tx Buffer is full, wait for space to clear
+      if ((TxQueueWritePos+1) % TXB_SIZE == TxQueueReadPos) flushTX();
 
-    // Temporarily lock out UART transmit interrupts during this read so the UART transmit interrupt won't
-    // cause problems with the index values
-    UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
+      // Temporarily lock out UART transmit interrupts during this read so the UART transmit interrupt won't
+      // cause problems with the index values
+      UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
 
-    // LPC17xx.h incorrectly defines FIFOLVL as a uint8_t, when it's actually a 32-bit register
-    if ((LPC_UART1_TypeDef *) UARTx == LPC_UART1) {
-      fifolvl = *(reinterpret_cast<volatile uint32_t *>(&((LPC_UART1_TypeDef *) UARTx)->FIFOLVL));
-    } else fifolvl = *(reinterpret_cast<volatile uint32_t *>(&UARTx->FIFOLVL));
+      // LPC17xx.h incorrectly defines FIFOLVL as a uint8_t, when it's actually a 32-bit register
+      if ((LPC_UART1_TypeDef *) UARTx == LPC_UART1) {
+        fifolvl = *(reinterpret_cast<volatile uint32_t *>(&((LPC_UART1_TypeDef *) UARTx)->FIFOLVL));
+      } else fifolvl = *(reinterpret_cast<volatile uint32_t *>(&UARTx->FIFOLVL));
 
-    // If the queue is empty and there's space in the FIFO, immediately send the byte
-    if (TxQueueWritePos == TxQueueReadPos && fifolvl < UART_TX_FIFO_SIZE) {
-      bytes = UART_Send(UARTx, &send, 1, BLOCKING);
+      // If the queue is empty and there's space in the FIFO, immediately send the byte
+      if (TxQueueWritePos == TxQueueReadPos && fifolvl < UART_TX_FIFO_SIZE) {
+        bytes = UART_Send(UARTx, &send, 1, BLOCKING);
+      }
+      // Otherwiise, write the byte to the transmit buffer
+      else if ((TxQueueWritePos+1) % TXB_SIZE != TxQueueReadPos) {
+        TxBuffer[TxQueueWritePos] = send;
+        TxQueueWritePos = (TxQueueWritePos+1) % TXB_SIZE;
+        bytes++;
+      }
+
+      // Re-enable the TX Interrupt
+      UART_IntConfig(UARTx, UART_INTCFG_THRE, ENABLE);
+
+      return bytes;
+    } else {
+      return UART_Send(UARTx, &send, 1, BLOCKING); // no tx buffer
     }
-    // Otherwiise, write the byte to the transmit buffer
-    else if ((TxQueueWritePos+1) % TXB_SIZE != TxQueueReadPos) {
-      TxBuffer[TxQueueWritePos] = send;
-      TxQueueWritePos = (TxQueueWritePos+1) % TXB_SIZE;
-      bytes++;
-    }
-
-    // Re-enable the TX Interrupt
-    UART_IntConfig(UARTx, UART_INTCFG_THRE, ENABLE);
-
-    return bytes;
-   // return UART_Send(UARTx, &send, 1, BLOCKING); // no tx buffer
   }
 
   void flushTX() {
-    // Wait for the tx buffer and FIFO to drain
-    while (TxQueueWritePos != TxQueueReadPos && UART_CheckBusy(UARTx) == SET);
+    if constexpr (TXB_SIZE > 0) {
+      // Wait for the tx buffer and FIFO to drain
+      while (TxQueueWritePos != TxQueueReadPos && UART_CheckBusy(UARTx) == SET);
+    }
   }
 
   size_t available() {
@@ -286,7 +294,7 @@ public:
     if (IIRValue == UART_IIR_INTID_RDA) {
       // Clear the FIFO
       while (UART_Receive(UARTx, &byte, 1, NONE_BLOCKING)) {
-        if(!recv_callback(byte))break;
+        if(!recv_callback(byte)) continue;
         if ((RxQueueWritePos + 1) % RXB_SIZE != RxQueueReadPos) {
           RxBuffer[RxQueueWritePos] = byte;
           RxQueueWritePos = (RxQueueWritePos + 1) % RXB_SIZE;
@@ -299,25 +307,27 @@ public:
       Status |= 0x100; // Bit 9 as the CTI error
     }
 
-    if (IIRValue == UART_IIR_INTID_THRE) {
-      // Disable THRE interrupt
-      UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
-
-      // Wait for FIFO buffer empty
-      while (UART_CheckBusy(UARTx) == SET);
-
-      // Transfer up to UART_TX_FIFO_SIZE bytes of data
-      for (int i = 0; i < UART_TX_FIFO_SIZE && TxQueueWritePos != TxQueueReadPos; i++) {
-        // Move a piece of data into the transmit FIFO
-        if (UART_Send(UARTx, &TxBuffer[TxQueueReadPos], 1, NONE_BLOCKING)) {
-          TxQueueReadPos = (TxQueueReadPos+1) % TXB_SIZE;
-        } else break;
-      }
-
-      // If there is no more data to send, disable the transmit interrupt - else enable it or keep it enabled
-      if (TxQueueWritePos == TxQueueReadPos) {
+    if constexpr (TXB_SIZE > 0) {
+      if (IIRValue == UART_IIR_INTID_THRE) {
+        // Disable THRE interrupt
         UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
-      } else UART_IntConfig(UARTx, UART_INTCFG_THRE, ENABLE);
+
+        // Wait for FIFO buffer empty
+        while (UART_CheckBusy(UARTx) == SET);
+
+        // Transfer up to UART_TX_FIFO_SIZE bytes of data
+        for (int i = 0; i < UART_TX_FIFO_SIZE && TxQueueWritePos != TxQueueReadPos; i++) {
+          // Move a piece of data into the transmit FIFO
+          if (UART_Send(UARTx, &TxBuffer[TxQueueReadPos], 1, NONE_BLOCKING)) {
+            TxQueueReadPos = (TxQueueReadPos+1) % TXB_SIZE;
+          } else break;
+        }
+
+        // If there is no more data to send, disable the transmit interrupt - else enable it or keep it enabled
+        if (TxQueueWritePos == TxQueueReadPos) {
+          UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
+        } else UART_IntConfig(UARTx, UART_INTCFG_THRE, ENABLE);
+      }
     }
   }
 };

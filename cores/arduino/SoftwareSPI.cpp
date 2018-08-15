@@ -80,5 +80,5 @@ void swSpiBegin(const pin_t sck_pin, const pin_t miso_pin, const pin_t mosi_pin)
 uint8_t swSpiInit(const uint8_t spiRate, const pin_t sck_pin, const pin_t mosi_pin) {
   WRITE_PIN(mosi_pin, HIGH);
   WRITE_PIN(sck_pin, LOW);
-  return (SystemCoreClock == 120000000 ? 44 : 38) / std::pow(2, 6 - min(spiRate, 6));
+  return (SystemCoreClock == 120000000 ? 44 : 38) / std::pow(2, 6 - std::min(spiRate, (uint8_t)6));
 }
