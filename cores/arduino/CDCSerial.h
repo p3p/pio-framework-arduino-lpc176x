@@ -25,7 +25,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
-#include <Print.h>
+#include <Stream.h>
 
 /**
  * Generic RingBuffer
@@ -85,7 +85,7 @@ private:
  *  Data is injected directly into, and consumed from, the fifo buffers
  */
 
-class CDCSerial: public Print {
+class CDCSerial: public Stream {
 public:
 
   CDCSerial() : host_connected(false) { }
