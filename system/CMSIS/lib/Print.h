@@ -20,8 +20,8 @@
 #ifndef _CMSIS_PRINT_H_
 #define _CMSIS_PRINT_H_
 
-#include <inttypes.h>
-#include <stdio.h> // for size_t
+#include <stdint.h>
+#include <stddef.h>
 #include <string.h>
 
 #include "Printable.h"
@@ -41,7 +41,7 @@ class Print {
   public:
     Print() : write_error(0) {}
     virtual ~Print() {}
-    
+
     int getWriteError() { return write_error; }
     void clearWriteError() { setWriteError(0); }
 

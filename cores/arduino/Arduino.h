@@ -26,6 +26,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <math.h>
+#include "binary.h"
+
 #include <const_functions.h>
 #include <pinmapping.h>
 
