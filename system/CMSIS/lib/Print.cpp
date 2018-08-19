@@ -157,6 +157,7 @@ size_t Print::printFloat(double number, uint8_t digits) {
     char *str;
     char  ch;
     uint8_t numOfDigits;
+    size_t length = 0;
 
     va_start(argp, argList);
 
@@ -181,55 +182,56 @@ size_t Print::printFloat(double number, uint8_t digits) {
         case 'C':
         case 'c':     // Argument type is of char, hence read char data from the argp
             ch = va_arg(argp, int);
-            print(ch);
+            length += print(ch);
             break;
 
         case 'd':    // Argument type is of signed integer, hence read 16bit data from the argp
         case 'D':
             num_s32 = va_arg(argp, int);
-            print(num_s32, 10);
+            length += print(num_s32, 10);
             break;
 
         case 'u':
         case 'U':    // Argument type is of integer, hence read 32bit unsigend data
             num_u32 = va_arg(argp, uint32_t);
-            print(num_u32, 10);
+            length += print(num_u32, 10);
             break;
 
         case 'x':
         case 'X':  // Argument type is of hex, hence hexadecimal data from the argp
             num_u32 = va_arg(argp, uint32_t);
-            print(num_u32, 16);
+            length += print(num_u32, 16);
             break;
 
         case 'b':
         case 'B':  // Argument type is of binary,Read int and convert to binary
             num_u32 = va_arg(argp, uint32_t);
-            print(num_u32, 2);
+            length += print(num_u32, 2);
             break;
 
         case 'F':
         case 'f': // Argument type is of float, hence read double data from the argp
             floatNum_f32 = va_arg(argp, double);
-            printFloat(floatNum_f32, 10);
+            length += printFloat(floatNum_f32, 10);
             break;
 
         case 'S':
         case 's': // Argument type is of string, hence get the pointer to sting passed
             str = va_arg(argp, char *);
-            print(str);
+            length += print(str);
             break;
 
         case '%':
-          print('%');
+          length += print('%');
           break;
         }
       }
       else
-        print(ch); // As '%' is not detected transmit the char passed
+        length += print(ch); // As '%' is not detected transmit the char passed
     }
 
     va_end(argp);
+    return length;
   }
 
 #endif // ENABLE_PRINTF
