@@ -135,12 +135,10 @@ void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255
   }
 }
 
-extern bool HAL_adc_finished();
-
 uint16_t analogRead(pin_t adc_pin) {
-  HAL_adc_start_conversion(adc_pin);
-  while (!HAL_adc_finished());  // Wait for conversion to finish
-  return HAL_adc_get_result();
+  LPC176x::ADC::start_conversion(adc_pin);
+  while (!LPC176x::ADC::finished_conversion());  // Wait for conversion to finish
+  return LPC176x::ADC::get_result();
 }
 
 // **************************
