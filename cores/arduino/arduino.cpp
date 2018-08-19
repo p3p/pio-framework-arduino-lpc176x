@@ -136,9 +136,9 @@ void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255
 }
 
 uint16_t analogRead(pin_t adc_pin) {
-  LPC176x::ADC::start_conversion(adc_pin);
-  while (!LPC176x::ADC::finished_conversion());  // Wait for conversion to finish
-  return LPC176x::ADC::get_result();
+  LPC176x::ADC<>::start_conversion(adc_pin);
+  while (!LPC176x::ADC<>::finished_conversion());  // Wait for conversion to finish
+  return LPC176x::ADC<>::get_result();
 }
 
 // **************************
