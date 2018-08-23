@@ -42,6 +42,26 @@ constexpr void limit(V& v, const N1 n1, const N2 n2) noexcept {
   else if (v > n2) v = n2;
 }
 
+template<typename Bit>
+constexpr auto bit_value(const Bit bit) noexcept {
+  return (static_cast<uint32_t>(1) << bit);
+}
+
+template<typename Value, typename Bit>
+constexpr bool bit_test(const Value val, const Bit bit) noexcept {
+  return val & (static_cast<Value>(1) << bit);
+}
+
+template<typename Value, typename Bit>
+constexpr auto bit_set(const Value val, const Bit bit) noexcept {
+  return val & (static_cast<Value>(1) << bit);
+}
+
+template<typename Value, typename Bit>
+constexpr auto bit_clear(const Value val, const Bit bit) noexcept {
+  return val & ~(static_cast<Value>(1) << bit);
+}
+
 #define _BV(n) (1<<(n))
 #define TEST(n,b) !!((n)&_BV(b))
 #define SBI(n,b) (n |= _BV(b))
