@@ -25,6 +25,8 @@
 
 #include <const_functions.h>
 #include <stdint.h>
+#include <iterator>
+#include <array>
 
 typedef int16_t pin_t;
 
@@ -180,7 +182,7 @@ constexpr int8_t LPC1768_PIN_ADC(const pin_t pin) { return (int8_t)((pin >> 10) 
 #define P4_29 LPC1768_PIN(PORT(4), PIN(29), INTERRUPT(0), PWM(0), ADC_NONE)
 
 // Pin index for M43 and M226
-constexpr pin_t pin_map[] = {
+constexpr std::array<pin_t, 160> pin_map {
   P0_00, P0_01, P0_02, P0_03, P0_04, P0_05, P0_06, P0_07,
   P0_08, P0_09, P0_10, P0_11, P_NC,  P_NC,  P_NC,  P0_15,
   P0_16, P0_17, P0_18, P0_19, P0_20, P0_21, P0_22, P0_23,
@@ -208,42 +210,58 @@ constexpr pin_t pin_map[] = {
 };
 
 //todo: temp marlin count implementation
-constexpr uint8_t NUM_DIGITAL_PINS = util::count(pin_map);
+constexpr uint8_t NUM_DIGITAL_PINS = pin_map.size();
 
-constexpr pin_t adc_pin_table[] = {
+constexpr std::array<pin_t, 8> adc_pin_table {
   P0_23, P0_24, P0_25, P0_26, P1_30, P1_31, P0_03, P0_02
 };
 
-  #define NUM_ANALOG_INPUTS 8
+constexpr uint8_t NUM_ANALOG_INPUTS = adc_pin_table.size();
 
 // P0.6 thru P0.9 are for the onboard SD card
 #define HAL_SENSITIVE_PINS P0_06, P0_07, P0_08, P0_09
 
 // Get the digital pin for an analog index
-pin_t analogInputToDigitalPin(const int8_t p);
-#define digitalPinToInterrupt(pin) (pin)
+constexpr pin_t analogInputToDigitalPin(const int8_t p) {
+  return (util::within(p, 0, NUM_ANALOG_INPUTS) ? adc_pin_table[p] : P_NC);
+}
+
+constexpr pin_t digitalPinToInterrupt(const pin_t pin) { return pin; }
+
+
+
 // Return the index of a pin number
 // The pin number given here is in the form ppp:nnnnn
-int16_t GET_PIN_MAP_INDEX(const pin_t pin);
+constexpr int16_t GET_PIN_MAP_INDEX(const pin_t pin) {
+  const uint16_t index = (LPC1768_PIN_PORT(pin) << 5) | LPC1768_PIN_PIN(pin);
+  return (index < NUM_DIGITAL_PINS && pin_map[index] != P_NC) ? index : P_NC;
+}
 
 // Test whether the pin is valid
-bool VALID_PIN(const pin_t p);
+constexpr bool VALID_PIN(const pin_t pin) {
+  const int16_t index = GET_PIN_MAP_INDEX(pin);
+  return index >= 0 && pin_map[index] >= 0;
+}
 
 // Get the analog index for a digital pin
-int8_t DIGITAL_PIN_TO_ANALOG_PIN(const pin_t p);
+constexpr int8_t DIGITAL_PIN_TO_ANALOG_PIN(const pin_t pin) {
+  return (VALID_PIN(pin) ? LPC1768_PIN_ADC(pin) : -1);
+}
 
 // Test whether the pin is PWM
-bool PWM_PIN(const pin_t p);
+constexpr bool PWM_PIN(const pin_t pin) {
+  return VALID_PIN(pin) && LPC1768_PIN_PWM(pin);
+}
 
 // Test whether the pin is interruptable
-bool INTERRUPT_PIN(const pin_t p);
-#define LPC1768_PIN_INTERRUPT_M(pin) (((pin >> 8) & 0b1) != 0)
+constexpr bool INTERRUPT_PIN(const pin_t pin) {
+  return VALID_PIN(pin) && LPC1768_PIN_INTERRUPT(pin);
+}
 
 // Get the pin number at the given index
-pin_t GET_PIN_MAP_PIN(const int16_t ind);
-
-// Parse a G-code word into a pin index
-int16_t PARSED_PIN_INDEX(const char code, const int16_t dval);
+constexpr pin_t GET_PIN_MAP_PIN(const int16_t index) {
+  return util::within(index, 0, NUM_DIGITAL_PINS - 1) ? pin_map[index] : P_NC;
+}
 
 bool useable_hardware_PWM(pin_t pin);
 
