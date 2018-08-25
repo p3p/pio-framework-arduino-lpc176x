@@ -272,7 +272,7 @@ bool useable_hardware_PWM(pin_t pin);
 #define SET_DIR_INPUT(IO)       (LPC_GPIO(LPC1768_PIN_PORT(IO))->FIODIR &= ~LPC_PIN(LPC1768_PIN_PIN(IO)))
 #define SET_DIR_OUTPUT(IO)      (LPC_GPIO(LPC1768_PIN_PORT(IO))->FIODIR |=  LPC_PIN(LPC1768_PIN_PIN(IO)))
 
-#define SET_MODE(IO, mode)      (pin_mode((LPC1768_PIN_PORT(IO), LPC1768_PIN_PIN(IO)), mode))
+#define SET_MODE(IO, mode)      (pinMode(IO, mode))
 
 #define WRITE_PIN_SET(IO)       (LPC_GPIO(LPC1768_PIN_PORT(IO))->FIOSET = LPC_PIN(LPC1768_PIN_PIN(IO)))
 #define WRITE_PIN_CLR(IO)       (LPC_GPIO(LPC1768_PIN_PORT(IO))->FIOCLR = LPC_PIN(LPC1768_PIN_PIN(IO)))
