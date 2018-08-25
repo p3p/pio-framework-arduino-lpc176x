@@ -72,9 +72,9 @@ uint8_t swSpiTransfer(uint8_t b, const uint8_t spi_speed, const pin_t sck_pin, c
 }
 
 void swSpiBegin(const pin_t sck_pin, const pin_t miso_pin, const pin_t mosi_pin) {
-  SET_DIR_OUTPUT(sck_pin);
-  if (VALID_PIN(miso_pin)) SET_DIR_INPUT(miso_pin);
-  SET_DIR_OUTPUT(mosi_pin);
+  setMode(sck_pin, OUTPUT);
+  if (VALID_PIN(miso_pin)) setMode(miso_pin, INPUT);
+  setMode(mosi_pin, OUTPUT);
 }
 
 uint8_t swSpiInit(const uint8_t spiRate, const pin_t sck_pin, const pin_t mosi_pin) {
