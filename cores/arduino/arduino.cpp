@@ -69,17 +69,17 @@ void pinMode(const pin_t pin, const uint8_t mode) {
                              PINSEL_PINMODE_NORMAL };
   switch (mode) {
     case INPUT:
-      LPC_GPIO(LPC1768_PIN_PORT(pin))->FIODIR &= ~LPC_PIN(LPC1768_PIN_PIN(pin));
+      gpio_set_input(pin);
       break;
     case OUTPUT:
-      LPC_GPIO(LPC1768_PIN_PORT(pin))->FIODIR |=  LPC_PIN(LPC1768_PIN_PIN(pin));
+      gpio_set_output(pin);
       break;
     case INPUT_PULLUP:
-      LPC_GPIO(LPC1768_PIN_PORT(pin))->FIODIR &= ~LPC_PIN(LPC1768_PIN_PIN(pin));
+      gpio_set_input(pin);
       config.Pinmode = PINSEL_PINMODE_PULLUP;
       break;
     case INPUT_PULLDOWN:
-      LPC_GPIO(LPC1768_PIN_PORT(pin))->FIODIR &= ~LPC_PIN(LPC1768_PIN_PIN(pin));
+      gpio_set_input(pin);
       config.Pinmode = PINSEL_PINMODE_PULLDOWN;
       break;
     default: return;
@@ -90,11 +90,7 @@ void pinMode(const pin_t pin, const uint8_t mode) {
 void digitalWrite(pin_t pin, uint8_t pin_status) {
   if (!VALID_PIN(pin)) return;
 
-  if (pin_status)
-    LPC_GPIO(LPC1768_PIN_PORT(pin))->FIOSET = LPC_PIN(LPC1768_PIN_PIN(pin));
-  else
-    LPC_GPIO(LPC1768_PIN_PORT(pin))->FIOCLR = LPC_PIN(LPC1768_PIN_PIN(pin));
-
+  gpio_set(pin, pin_status);
   pinMode(pin, OUTPUT);  // Set pin mode on every write (Arduino version does this)
 
   /**
@@ -109,7 +105,7 @@ void digitalWrite(pin_t pin, uint8_t pin_status) {
 bool digitalRead(pin_t pin) {
   if (!VALID_PIN(pin)) return false;
 
-  return LPC_GPIO(LPC1768_PIN_PORT(pin))->FIOPIN & LPC_PIN(LPC1768_PIN_PIN(pin)) ? 1 : 0;
+  return gpio_get(pin);
 }
 
 void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255: HIGH

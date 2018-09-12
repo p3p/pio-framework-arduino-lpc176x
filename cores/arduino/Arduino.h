@@ -26,8 +26,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <math.h>
-#include "binary.h"
 
+#include <LPC17xx.h>
+
+#include <binary.h>
 #include <const_functions.h>
 #include <pinmapping.h>
 
@@ -46,16 +48,14 @@
 #define FALLING      0x03
 #define RISING       0x04
 
-#define E2END 0xFFF // EEPROM end address
-
 typedef uint8_t byte;
 #define PROGMEM
 #define PSTR(v) (v)
 #define PGM_P const char *
 
-using std::min;
-using std::max;
-using std::abs;
+using util::min;
+using util::max;
+using util::abs;
 using std::isnan;
 using std::isinf;
 
