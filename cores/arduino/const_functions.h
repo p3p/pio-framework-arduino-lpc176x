@@ -6,6 +6,21 @@
 
 namespace util {
 
+template <class L, class R>
+constexpr auto min(const L lhs, const R rhs) noexcept -> decltype(lhs + rhs) {
+  return lhs < rhs ? lhs : rhs;
+}
+
+template <class L, class R>
+constexpr auto max(const L lhs, const R rhs) noexcept -> decltype(lhs + rhs) {
+  return lhs > rhs ? lhs : rhs;
+}
+
+template <class T>
+constexpr const T abs(const T v) noexcept {
+  return v >= 0 ? v : -v;
+}
+
 template <typename T, std::size_t N>
 constexpr std::size_t count(T const (&)[N]) noexcept {
   return N;
@@ -42,24 +57,29 @@ constexpr void limit(V& v, const N1 n1, const N2 n2) noexcept {
   else if (v > n2) v = n2;
 }
 
-template<typename Bit>
+template <typename Bit>
 constexpr auto bit_value(const Bit bit) noexcept {
   return (static_cast<uint32_t>(1) << bit);
 }
 
-template<typename Value, typename Bit>
-constexpr bool bit_test(const Value val, const Bit bit) noexcept {
-  return val & (static_cast<Value>(1) << bit);
+template <typename Value, typename Bit>
+constexpr bool bit_test(const Value& val, const Bit bit) noexcept {
+  return val & bit_value(bit);
 }
 
-template<typename Value, typename Bit>
-constexpr auto bit_set(const Value val, const Bit bit) noexcept {
-  return val & (static_cast<Value>(1) << bit);
+template <typename Value, typename Bit>
+constexpr auto bit_set(Value& val, const Bit bit) noexcept {
+  return val |= bit_value(bit);
 }
 
-template<typename Value, typename Bit>
-constexpr auto bit_clear(const Value val, const Bit bit) noexcept {
-  return val & ~(static_cast<Value>(1) << bit);
+template <typename Value, typename Bit>
+constexpr auto bit_clear(Value& val, const Bit bit) noexcept {
+  return val &= ~bit_value(bit);
+}
+
+template<typename T>
+constexpr auto memory(const std::size_t loc) {
+  return reinterpret_cast<volatile T(*)>(loc);
 }
 
 #define _BV(n) (1<<(n))

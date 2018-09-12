@@ -81,7 +81,7 @@ class Servo {
     int readMicroseconds();            // returns current pulse width in microseconds for this servo (was read_us() in first release)
     bool attached();                   // return true if this servo is attached, otherwise false
 
-  private:
+  protected:
     uint8_t servoIndex;               // index into the channel data for this servo
     int min;
     int max;
