@@ -211,13 +211,11 @@ constexpr std::array<pin_t, 160> pin_map {
   P_NC,  P_NC,  P_NC,  P_NC,  P4_28, P4_29, P_NC,  P_NC
 };
 
-//todo: temp marlin count implementation
-constexpr uint8_t NUM_DIGITAL_PINS = pin_map.size();
-
 constexpr std::array<pin_t, 8> adc_pin_table {
   P0_23, P0_24, P0_25, P0_26, P1_30, P1_31, P0_03, P0_02
 };
 
+constexpr uint8_t NUM_DIGITAL_PINS = pin_map.size();
 constexpr uint8_t NUM_ANALOG_INPUTS = adc_pin_table.size();
 
 // P0.6 thru P0.9 are for the onboard SD card
@@ -229,8 +227,6 @@ constexpr pin_t analogInputToDigitalPin(const int8_t p) {
 }
 
 constexpr pin_t digitalPinToInterrupt(const pin_t pin) { return pin; }
-
-
 
 // Return the index of a pin number
 // The pin number given here is in the form ppp:nnnnn
@@ -267,41 +263,37 @@ constexpr pin_t GET_PIN_MAP_PIN(const int16_t index) {
 
 bool useable_hardware_PWM(pin_t pin);
 
-constexpr auto gpio_port( uint8_t port ) {
+constexpr auto gpio_port(uint8_t port) {
   constexpr std::size_t LPC_PORT_OFFSET = 0x0020;
-  return util::memory<LPC_GPIO_TypeDef>(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port);
+  return util::memory_ptr<LPC_GPIO_TypeDef>(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port);
 }
 
-constexpr auto gpio_pin( uint8_t pin ) {
-  return util::bit_value(pin);
+__attribute__((always_inline)) inline void gpio_set_input(const pin_t pin) {
+  util::bit_clear(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
 }
 
-inline void gpio_set_input(const pin_t pin) {
-  util::bit_clear(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, gpio_pin(LPC1768_PIN_PIN(pin)));
+__attribute__((always_inline)) inline void gpio_set_output(const pin_t pin) {
+  util::bit_set(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
 }
 
-inline void gpio_set_output(const pin_t pin) {
-  util::bit_set(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, gpio_pin(LPC1768_PIN_PIN(pin)));
+__attribute__((always_inline)) inline bool gpio_get_dir(const pin_t pin) {
+  return util::bit_test(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
 }
 
-inline bool gpio_get_dir(const pin_t pin) {
-  return gpio_port(LPC1768_PIN_PORT(pin))->FIODIR & gpio_pin(LPC1768_PIN_PIN(pin));
+__attribute__((always_inline)) inline void gpio_set(const pin_t pin) {
+  gpio_port(LPC1768_PIN_PORT(pin))->FIOSET = util::bit_value(LPC1768_PIN_PIN(pin));
 }
 
-inline void gpio_set(const pin_t pin) {
-  gpio_port(LPC1768_PIN_PORT(pin))->FIOSET = gpio_pin(LPC1768_PIN_PIN(pin));
+__attribute__((always_inline)) inline void gpio_clear(const pin_t pin) {
+  gpio_port(LPC1768_PIN_PORT(pin))->FIOCLR = util::bit_value(LPC1768_PIN_PIN(pin));
 }
 
-inline void gpio_clear(const pin_t pin) {
-  gpio_port(LPC1768_PIN_PORT(pin))->FIOCLR = gpio_pin(LPC1768_PIN_PIN(pin));
-}
-
-inline void gpio_set(const pin_t pin, const bool value) {
+__attribute__((always_inline)) inline void gpio_set(const pin_t pin, const bool value) {
   value ? gpio_set(pin) : gpio_clear(pin);
 }
 
-inline bool gpio_get(const pin_t pin) {
-  return ((gpio_port(LPC1768_PIN_PORT(pin))->FIOPIN & gpio_pin(LPC1768_PIN_PIN(pin))) ? 1 : 0);
+__attribute__((always_inline)) inline bool gpio_get(const pin_t pin) {
+  return util::bit_test(gpio_port(LPC1768_PIN_PORT(pin))->FIOPIN, LPC1768_PIN_PIN(pin));
 }
 
 #endif // _PINMAPPING_H_

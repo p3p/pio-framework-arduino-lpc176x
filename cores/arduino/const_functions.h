@@ -78,7 +78,7 @@ constexpr auto bit_clear(Value& val, const Bit bit) noexcept {
 }
 
 template<typename T>
-constexpr auto memory(const std::size_t loc) {
+constexpr auto memory_ptr(const std::size_t loc) {
   return reinterpret_cast<volatile T(*)>(loc);
 }
 
