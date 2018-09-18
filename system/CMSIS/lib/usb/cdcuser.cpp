@@ -79,6 +79,45 @@ uint32_t CDC_OutBufAvailChar(uint32_t *availChar) {
  *---------------------------------------------------------------------------*/
 void CDC_Init() {
   CDC_DepInEmpty = 1;
+  CDC_LineState = 0;
+  CDC_SerialState = 0;
+  UsbSerial.host_connected = false;
+}
+
+/*----------------------------------------------------------------------------
+ CDC Suspend Event
+ Handle the suspension of the USB connection
+ Parameters:   None
+ Return Value: None
+ *---------------------------------------------------------------------------*/
+void CDC_Suspend() {
+  UsbSerial.host_connected = false;
+  UsbSerial.transmit_buffer.clear();
+  CDC_DepInEmpty = 0;
+}
+
+/*----------------------------------------------------------------------------
+ CDC Resume Event
+ Handle the resumption of the USB connection
+ Parameters:   None
+ Return Value: None
+ *---------------------------------------------------------------------------*/
+void CDC_Resume() {
+  UsbSerial.host_connected = (CDC_LineState & CDC_DTE_PRESENT) != 0 ? true : false;
+  CDC_DepInEmpty = 1;
+}
+
+/*----------------------------------------------------------------------------
+ CDC Reset Event
+ Handle the reset of the USB connection
+ Parameters:   None
+ Return Value: None
+ *---------------------------------------------------------------------------*/
+void CDC_Reset() {
+  // USB reset, any packets in transit may have been flushed
+  UsbSerial.host_connected = (CDC_LineState & CDC_DTE_PRESENT) != 0 ? true : false;
+  CDC_DepInEmpty = 1;
+  CDC_FlushBuffer();
 }
 
 /*----------------------------------------------------------------------------
@@ -183,7 +222,7 @@ uint32_t CDC_GetLineCoding(void) {
  *---------------------------------------------------------------------------*/
 uint32_t CDC_SetControlLineState(unsigned short wControlSignalBitmap) {
   CDC_LineState = wControlSignalBitmap;
-  UsbSerial.host_connected = wControlSignalBitmap > 0 ? true : false;
+  UsbSerial.host_connected = (CDC_LineState & CDC_DTE_PRESENT) != 0 ? true : false;
   return true;
 }
 
@@ -208,16 +247,17 @@ uint32_t CDC_SendBreak(unsigned short wDurationOfBreak) {
  *---------------------------------------------------------------------------*/
 void CDC_BulkIn(void) {
   uint32_t numBytesAvail = UsbSerial.transmit_buffer.available();
+  uint32_t epStat = USB_ReadStatusEP(CDC_DEP_IN);
 
-  if (numBytesAvail > 0) {
+  if (numBytesAvail > 0 && (epStat & EP_SEL_F) == 0) {
     numBytesAvail = numBytesAvail > (USB_CDC_BUFSIZE - 1) ? (USB_CDC_BUFSIZE - 1) : numBytesAvail;
     for(uint32_t i = 0; i < numBytesAvail; ++i) {
       UsbSerial.transmit_buffer.read(&BulkBufIn[i]);
     }
     USB_WriteEP(CDC_DEP_IN, &BulkBufIn[0], numBytesAvail);
-  } else {
-    CDC_DepInEmpty = 1;
+    epStat = USB_ReadStatusEP(CDC_DEP_IN);
   }
+  CDC_DepInEmpty = (epStat & EP_SEL_F) == 0;
 }
 
 /*----------------------------------------------------------------------------
