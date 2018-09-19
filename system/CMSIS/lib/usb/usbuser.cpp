@@ -50,6 +50,8 @@ void USB_Power_Event (uint32_t  power) {
 #if USB_RESET_EVENT
 void USB_Reset_Event (void) {
   USB_ResetCore();
+  MSC_Reset();
+  CDC_Reset();
 }
 #endif
 
@@ -61,6 +63,7 @@ void USB_Reset_Event (void) {
 
 #if USB_SUSPEND_EVENT
 void USB_Suspend_Event (void) {
+  CDC_Suspend();
 }
 #endif
 
@@ -72,6 +75,7 @@ void USB_Suspend_Event (void) {
 
 #if USB_RESUME_EVENT
 void USB_Resume_Event (void) {
+  CDC_Resume();
 }
 #endif
 

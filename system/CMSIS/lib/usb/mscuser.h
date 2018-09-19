@@ -31,6 +31,8 @@
 /* MSC Requests Callback Functions */
 extern uint32_t MSC_Reset     (void);
 extern uint32_t MSC_GetMaxLUN (void);
+void MSC_UnstallEP(uint32_t EPNum);
+void MSC_StallEP(uint32_t EPNum);
 
 /* MSC Bulk Callback Functions */
 extern void MSC_GetCBW (void);
@@ -100,5 +102,12 @@ struct Sense {
   Sense_ASC asc;
   Sense_ASCQ ascq;
 };
+
+/* Initialisation and locking */
+uint32_t MSC_Aquire_Lock(void);
+uint32_t MSC_Release_Lock(void);
+uint32_t MSC_SD_Init(uint8_t pdrv);
+
+void MSC_RunDeferredCommands(void);
 
 #endif  /* __MSCUSER_H__ */

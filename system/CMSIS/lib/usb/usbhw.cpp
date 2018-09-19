@@ -196,8 +196,6 @@ void USB_Reset (void) {
                (USB_SOF_EVENT   ? FRAME_INT : 0) |
                (USB_ERROR_EVENT ? ERR_INT   : 0);
 
-  WrCmdDat(CMD_SET_MODE, DAT_WR_BYTE(INAK_BI));
-
 
 #if USB_DMA
   LPC_USB->USBUDCAH   = USB_RAM_ADR;
@@ -399,6 +397,17 @@ void USB_ClearEPBuf (uint32_t EPNum) {
   WrCmdEP(EPNum, CMD_CLR_BUF);
 }
 
+/*
+ * Read the EP Status
+ *    Parameters:      EPNum: Endpoint Number
+ *                       EPNum.0..3: Address
+ *                       EPNum.7:    Dir
+ *    Return Value:    EP Status
+ */
+uint32_t USB_ReadStatusEP(uint32_t EPNum) {
+  WrCmd(CMD_SEL_EP(EPAdr(EPNum)));
+  return RdCmdDat (DAT_SEL_EP(EPAdr(EPNum)));
+}
 
 /*
  *  Read USB Endpoint Data
@@ -457,6 +466,11 @@ uint32_t USB_WriteEP (uint32_t EPNum, uint8_t *pData, uint32_t cnt) {
   LPC_USB->USBCtrl = 0;
   WrCmdEP(EPNum, CMD_VALID_BUF);
   return (cnt);
+}
+
+void USB_SetInterruptEP(uint32_t EPNum)
+{
+  LPC_USB->USBEpIntSet = (1 << EPAdr(EPNum));
 }
 
 #if USB_DMA
