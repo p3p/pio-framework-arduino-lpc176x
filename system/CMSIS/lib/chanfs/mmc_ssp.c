@@ -529,7 +529,7 @@ DRESULT disk_read (
 	if (drv || !count) return RES_PARERR;		/* Check parameter */
 	if (Stat & STA_NOINIT) return RES_NOTRDY;	/* Check if drive is ready */
 	if (!(CardType & CT_BLOCK)) sector *= 512;	/* LBA ot BA conversion (byte addressing cards) */
-
+	FCLK_FAST();
 	cmd = count > 1 ? CMD18 : CMD17;			/*  READ_MULTIPLE_BLOCK : READ_SINGLE_BLOCK */
 	if (send_cmd(cmd, sector) == 0) {
 		do {
@@ -560,7 +560,7 @@ DRESULT disk_write (
 	if (drv || !count) return RES_PARERR;		/* Check parameter */
 	if (Stat & STA_NOINIT) return RES_NOTRDY;	/* Check drive status */
 	if (Stat & STA_PROTECT) return RES_WRPRT;	/* Check write protect */
-
+	FCLK_FAST();
 	if (!(CardType & CT_BLOCK)) sector *= 512;	/* LBA ==> BA conversion (byte addressing cards) */
 
 	if (count == 1) {	/* Single sector write */
@@ -611,7 +611,7 @@ DRESULT disk_ioctl (
 	if (Stat & STA_NOINIT) return RES_NOTRDY;	/* Check if drive is ready */
 
 	res = RES_ERROR;
-
+	FCLK_FAST();
 	switch (cmd) {
 	case CTRL_SYNC:			/* Wait for end of internal write process of the drive */
 		if (select()) res = RES_OK;

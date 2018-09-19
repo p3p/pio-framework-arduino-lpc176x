@@ -213,12 +213,7 @@ __inline uint32_t USB_ReqSetClrFeature(uint32_t sc) {
           }
           USB_ClrStallEP(n);
 #if (USB_MSC)
-          if ((n == MSC_EP_IN) && ((USB_EndPointHalt & m) != 0)) {
-            /* Compliance Test: rewrite CSW after unstall */
-            if (CSW.dSignature == MSC_CSW_Signature) {
-              USB_WriteEP(MSC_EP_IN, (uint8_t *) &CSW, sizeof(CSW));
-            }
-          }
+          MSC_UnstallEP(n);
 #endif
           USB_EndPointHalt &= ~m;
         }
