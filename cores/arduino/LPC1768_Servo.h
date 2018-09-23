@@ -38,8 +38,8 @@
 
 // Macros
 //values in microseconds
-#define MIN_PULSE_WIDTH       544     // the shortest pulse sent to a servo
-#define MAX_PULSE_WIDTH      2400     // the longest pulse sent to a servo
+#define MIN_PULSE_WIDTH       500     // the shortest pulse sent to a servo
+#define MAX_PULSE_WIDTH      2500     // the longest pulse sent to a servo
 #define DEFAULT_PULSE_WIDTH  1500     // default pulse width when servo is attached
 #define REFRESH_INTERVAL    20000     // minimum time to refresh servos in microseconds
 
@@ -74,9 +74,6 @@ class Servo {
     void detach();
     void write(int value);             // if value is < 200 it is treated as an angle, otherwise as pulse width in microseconds
     void writeMicroseconds(int value); // write pulse width in microseconds
-    void move(const int value);        // attach the servo, then move to value
-                                       // if value is < 200 it is treated as an angle, otherwise as pulse width in microseconds
-                                       // if DEACTIVATE_SERVOS_AFTER_MOVE wait SERVO_DELAY, then detach
     int read();                        // returns current pulse width as an angle between 0 and 180 degrees
     int readMicroseconds();            // returns current pulse width in microseconds for this servo (was read_us() in first release)
     bool attached();                   // return true if this servo is attached, otherwise false
