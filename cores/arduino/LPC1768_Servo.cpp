@@ -61,10 +61,10 @@
  */
 
 #include <algorithm>
+#include "Arduino.h"
 
 #include "LPC1768_PWM.h"
 #include "LPC1768_Servo.h"
-#include "Arduino.h"
 
 ServoInfo_t servo_info[MAX_SERVOS];                  // static array of servo info structures
 uint8_t ServoCount = 0;                              // the total number of attached servos
@@ -80,8 +80,7 @@ Servo::Servo() {
     this->servoIndex = ServoCount++;                    // assign a servo index to this instance
     servo_info[this->servoIndex].pulse_width = US_TO_PULSE_WIDTH(DEFAULT_PULSE_WIDTH);   // store default values  - 12 Aug 2009
   }
-  else
-  this->servoIndex = INVALID_SERVO;  // too many servos
+  else this->servoIndex = INVALID_SERVO;  // too many servos
 }
 
 int8_t Servo::attach(const int pin) {
@@ -101,11 +100,15 @@ int8_t Servo::attach(const int pin, const int min, const int max) {
 
   servo_info[this->servoIndex].Pin.isActive = true;
 
+  LPC1768_PWM_attach_pin(servo_info[this->servoIndex].Pin.nbr, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
+  LPC1768_PWM_write(servo_info[this->servoIndex].Pin.nbr, 1500); // Servo idle position
+
   return this->servoIndex;
 }
 
 void Servo::detach() {
   servo_info[this->servoIndex].Pin.isActive = false;
+  LPC1768_PWM_detach_pin(servo_info[this->servoIndex].Pin.nbr);
 }
 
 void Servo::write(int value) {

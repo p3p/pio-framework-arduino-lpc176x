@@ -79,10 +79,6 @@
 #define HAL_PWM_TIMER_ISR  extern "C" void TIMER3_IRQHandler(void)
 #define HAL_PWM_TIMER_IRQn TIMER3_IRQn
 
-#define LPC_PORT_OFFSET         (0x0020)
-#define LPC_PIN(pin)            (1UL << pin)
-#define LPC_GPIO(port)          ((volatile LPC_GPIO_TypeDef *)(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port))
-
 typedef struct {            // holds all data needed to control/init one of the PWM channels
   bool                active_flag;    // THIS TABLE ENTRY IS ACTIVELY TOGGLING A PIN
   pin_t               pin;
@@ -161,30 +157,34 @@ void LPC1768_PWM_init(void) {
   #define PCPWM1          6
   #define PCLK_PWM1      12
 
-  SBI(LPC_SC->PCONP, PCPWM1);                                             // Enable PWM1 controller (enabled on power up)
+  util::bit_set(LPC_SC->PCONP, PCPWM1);                                   // Enable PWM1 controller (enabled on power up)
+
   LPC_SC->PCLKSEL0 &= ~(0x3 << PCLK_PWM1);
   LPC_SC->PCLKSEL0 |= (LPC_PWM1_PCLKSEL0 << PCLK_PWM1);
 
-  uint32_t PR = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / 1000000) - 1;      // Prescalar to create 1 MHz output
+  const uint32_t PR = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / 1000000) - 1;      // Prescalar to create 1 MHz output
 
-  LPC_PWM1->MR0  = LPC_PWM1_MR0;                                          // TC resets every 19,999 + 1 cycles - sets PWM cycle(Ton+Toff) to 20 mS
-  // MR0 must be set before TCR enables the PWM
-  LPC_PWM1->TCR  = _BV(SBIT_CNTEN) | _BV(SBIT_CNTRST) | _BV(SBIT_PWMEN);  // Enable counters, reset counters, set mode to PWM
-  CBI(LPC_PWM1->TCR, SBIT_CNTRST);                                        // Take counters out of reset
-  LPC_PWM1->PR   = PR;
-  LPC_PWM1->MCR  = _BV(SBIT_PWMMR0R) | _BV(0);                            // Reset TC if it matches MR0, disable all interrupts except for MR0
-  LPC_PWM1->CTCR = 0;                                                     // Disable counter mode (enable PWM mode)
-  LPC_PWM1->LER  = 0x07F;                                                 // Set the latch Enable Bits to load the new Match Values for MR0 - MR6
-  LPC_PWM1->PCR  = 0;                                                     // Single edge mode for all channels, PWM1 control of outputs off
+  // reset and set up timing
+  LPC_PWM1->TCR  = util::bit_value(1); // reset all counters
+  LPC_PWM1->PR   = PR;                 // set prescaler
+  // Set the pwm period to 20ms
+  LPC_PWM1->MR0  = 19999;                                        // TC resets every 19,999 + 1 cycles - sets PWM cycle(Ton+Toff) to 20 mS
 
-  ////  interrupt controlled PWM setup
+  // Configure pwm
+  LPC_PWM1->MCR  = util::bit_value(1);                           // Configured to reset TC if it matches MR0, disable all interrupts except for MR0
+  LPC_PWM1->CTCR = 0;                                            // Set counters to PWM mode
 
+  // Disable all pwm outputs and enable pwm mode
+  LPC_PWM1->PCR  = 0;                                            // PWM1 control of outputs off
+  LPC_PWM1->TCR  = util::bit_value(0) | util::bit_value(3);      // Enable counters, Turn on PWM
+
+  // setup timer for interrupt controlled PWM setup
   LPC_SC->PCONP |= 1 << 23;  // power on timer3
   HAL_PWM_TIMER->PR = PR;
   HAL_PWM_TIMER->MCR = 0x0B;              // Interrupt on MR0 & MR1, reset on MR0
   HAL_PWM_TIMER->MR0 = LPC_PWM1_MR0;
   HAL_PWM_TIMER->MR1 = 0;
-  HAL_PWM_TIMER->TCR = _BV(0);       // enable
+  HAL_PWM_TIMER->TCR = util::bit_value(0);       // enable
   NVIC_EnableIRQ(HAL_PWM_TIMER_IRQn);
   NVIC_SetPriority(HAL_PWM_TIMER_IRQn, NVIC_EncodePriority(0, 4, 0));
 }
@@ -220,33 +220,45 @@ bool LPC1768_PWM_attach_pin(pin_t pin, uint32_t min /* = 1 */, uint32_t max /* =
   switch (pin) {
     case P1_23:                                       // MKS Sbase Servo 0, PWM1 channel 4  (J3-8 PWM1.4)
       direct_table[P1_23_PWM_channel - 1].min = min;
-      direct_table[P1_23_PWM_channel - 1].max = MIN(max, LPC_PWM1_MR0 - MR0_MARGIN);
+      direct_table[P1_23_PWM_channel - 1].max = util::min(max, static_cast<uint32_t>(LPC_PWM1_MR0 - MR0_MARGIN));
       direct_table[P1_23_PWM_channel - 1].assigned = true;
+      LPC_PWM1->PCR |=  util::bit_value(8 + P1_23_PWM_channel); // enable PWM1 module control of this pin
+      LPC_PINCON->PINSEL3 = 0x2 <<  14;                         // must set pin function AFTER setting PCR
       return true;
     case P1_20:                                       // Servo 0, PWM1 channel 2  (Pin 11  P1.20 PWM1.2)
       direct_table[P1_20_PWM_channel - 1].min = min;
-      direct_table[P1_20_PWM_channel - 1].max = MIN(max, LPC_PWM1_MR0 - MR0_MARGIN);
+      direct_table[P1_20_PWM_channel - 1].max = util::min(max, static_cast<uint32_t>(LPC_PWM1_MR0 - MR0_MARGIN));
       direct_table[P1_20_PWM_channel - 1].assigned = true;
+      LPC_PWM1->PCR |=  util::bit_value(8 + P1_20_PWM_channel); // enable PWM1 module control of this pin
+      LPC_PINCON->PINSEL3 |= 0x2 <<  8;                         // must set pin function AFTER setting PCR
       return true;
     case P1_21:                                       // Servo 1, PWM1 channel 3  (Pin 6  P1.21 PWM1.3)
       direct_table[P1_21_PWM_channel - 1].min = min;
-      direct_table[P1_21_PWM_channel - 1].max = MIN(max, LPC_PWM1_MR0 - MR0_MARGIN);
+      direct_table[P1_21_PWM_channel - 1].max = util::min(max, static_cast<uint32_t>(LPC_PWM1_MR0 - MR0_MARGIN));
       direct_table[P1_21_PWM_channel - 1].assigned = true;
+      LPC_PWM1->PCR |=  util::bit_value(8 + P1_21_PWM_channel); // enable PWM1 module control of this pin
+      LPC_PINCON->PINSEL3 |= 0x2 << 10;              // must set pin function AFTER setting PCR
       return true;
     case P1_18:                                       // Servo 3, PWM1 channel 1 (Pin 4  P1.18 PWM1.1)
       direct_table[P1_18_PWM_channel - 1].min = min;
-      direct_table[P1_18_PWM_channel - 1].max = MIN(max, LPC_PWM1_MR0 - MR0_MARGIN);
+      direct_table[P1_18_PWM_channel - 1].max = util::min(max, static_cast<uint32_t>(LPC_PWM1_MR0 - MR0_MARGIN));
       direct_table[P1_18_PWM_channel - 1].assigned = true;
+      LPC_PWM1->PCR |=  util::bit_value(8 + P1_18_PWM_channel); // enable PWM1 module control of this pin
+      LPC_PINCON->PINSEL3 |= 0x2 <<  4;             // must set pin function AFTER setting PCR
       return true;
     case P2_04:                                       // D9 FET, PWM1 channel 5  (Pin 9  P2_04 PWM1.5)
       direct_table[P2_04_PWM_channel - 1].min = min;
-      direct_table[P2_04_PWM_channel - 1].max = MIN(max, LPC_PWM1_MR0 - MR0_MARGIN);
+      direct_table[P2_04_PWM_channel - 1].max = util::min(max, static_cast<uint32_t>(LPC_PWM1_MR0 - MR0_MARGIN));
       direct_table[P2_04_PWM_channel - 1].assigned = true;
+      LPC_PWM1->PCR |=  util::bit_value(8 + P2_04_PWM_channel); // enable PWM1 module control of this pin
+      LPC_PINCON->PINSEL4 |= 0x1 <<  8;                         // must set pin function AFTER setting PCR
       return true;
     case P2_05:                                       // D10 FET, PWM1 channel 6 (Pin 10  P2_05 PWM1.6)
       direct_table[P2_05_PWM_channel - 1].min = min;
-      direct_table[P2_05_PWM_channel - 1].max = MIN(max, LPC_PWM1_MR0 - MR0_MARGIN);
+      direct_table[P2_05_PWM_channel - 1].max = util::min(max, static_cast<uint32_t>(LPC_PWM1_MR0 - MR0_MARGIN));
       direct_table[P2_05_PWM_channel - 1].assigned = true;
+      LPC_PWM1->PCR |=  util::bit_value(8 + P2_05_PWM_channel); // enable PWM1 module control of this pin
+      LPC_PINCON->PINSEL4 |= 0x1 << 10;             // must set pin function AFTER setting PCR
       return true;
   }
 
@@ -283,9 +295,9 @@ bool LPC1768_PWM_attach_pin(pin_t pin, uint32_t min /* = 1 */, uint32_t max /* =
   slot--;  // turn it into array index
 
   temp_table[slot].pin          = pin;     // init slot
-  temp_table[slot].set_register = &LPC_GPIO(LPC1768_PIN_PORT(pin))->FIOSET;
-  temp_table[slot].clr_register = &LPC_GPIO(LPC1768_PIN_PORT(pin))->FIOCLR;
-  temp_table[slot].write_mask   = LPC_PIN(LPC1768_PIN_PIN(pin));
+  temp_table[slot].set_register = &gpio_port(LPC1768_PIN_PORT(pin))->FIOSET;
+  temp_table[slot].clr_register = &gpio_port(LPC1768_PIN_PORT(pin))->FIOCLR;
+  temp_table[slot].write_mask   = util::bit_value(LPC1768_PIN_PIN(pin));
   temp_table[slot].min          = min;
   temp_table[slot].max          = max;                // different max for ISR PWMs than for direct PWMs
   temp_table[slot].servo_index  = servo_index;
@@ -305,37 +317,37 @@ bool LPC1768_PWM_detach_pin(pin_t pin) {
   switch (pin) {
     case P1_23:                                       // MKS Sbase Servo 0, PWM1 channel 4  (J3-8 PWM1.4)
       if (!direct_table[P1_23_PWM_channel - 1].assigned) return false;
-      CBI(LPC_PWM1->PCR, 8 + P1_23_PWM_channel);      // disable PWM1 module control of this pin
+      util::bit_clear(LPC_PWM1->PCR, 8 + P1_23_PWM_channel);      // disable PWM1 module control of this pin
       LPC_PINCON->PINSEL3 &= ~(0x3 <<  14);           // return pin to general purpose I/O
       direct_table[P1_23_PWM_channel - 1].assigned = false;
       return true;
     case P1_20:                                       // Servo 0, PWM1 channel 2  (Pin 11  P1.20 PWM1.2)
       if (!direct_table[P1_20_PWM_channel - 1].assigned) return false;
-      CBI(LPC_PWM1->PCR, 8 + P1_20_PWM_channel);      // disable PWM1 module control of this pin
+      util::bit_clear(LPC_PWM1->PCR, 8 + P1_20_PWM_channel);      // disable PWM1 module control of this pin
       LPC_PINCON->PINSEL3 &= ~(0x3 <<  8);            // return pin to general purpose I/O
       direct_table[P1_20_PWM_channel - 1].assigned = false;
       return true;
     case P1_21:                                       // Servo 1, PWM1 channel 3  (Pin 6  P1.21 PWM1.3)
       if (!direct_table[P1_21_PWM_channel - 1].assigned) return false;
-      CBI(LPC_PWM1->PCR, 8 + P1_21_PWM_channel);      // disable PWM1 module control of this pin
+      util::bit_clear(LPC_PWM1->PCR, 8 + P1_21_PWM_channel);      // disable PWM1 module control of this pin
       LPC_PINCON->PINSEL3 &= ~(0x3 << 10);            // return pin to general purpose I/O
       direct_table[P1_21_PWM_channel - 1].assigned = false;
       return true;
     case P1_18:                                       // Servo 3, PWM1 channel 1 (Pin 4  P1.18 PWM1.1)
       if (!direct_table[P1_18_PWM_channel - 1].assigned) return false;
-      CBI(LPC_PWM1->PCR, 8 + P1_18_PWM_channel);      // disable PWM1 module control of this pin
+      util::bit_clear(LPC_PWM1->PCR, 8 + P1_18_PWM_channel);      // disable PWM1 module control of this pin
       LPC_PINCON->PINSEL3 &= ~(0x3 <<  4);            // return pin to general purpose I/O
       direct_table[P1_18_PWM_channel - 1].assigned = false;
       return true;
     case P2_04:                                       // D9 FET, PWM1 channel 5  (Pin 9  P2_04 PWM1.5)
       if (!direct_table[P2_04_PWM_channel - 1].assigned) return false;
-      CBI(LPC_PWM1->PCR, 8 + P2_04_PWM_channel);      // disable PWM1 module control of this pin
+      util::bit_clear(LPC_PWM1->PCR, 8 + P2_04_PWM_channel);      // disable PWM1 module control of this pin
       LPC_PINCON->PINSEL4 &= ~(0x3 << 10);            // return pin to general purpose I/O
       direct_table[P2_04_PWM_channel - 1].assigned = false;
       return true;
     case P2_05:                                       // D10 FET, PWM1 channel 6 (Pin 10  P2_05 PWM1.6)
       if (!direct_table[P2_05_PWM_channel - 1].assigned) return false;
-      CBI(LPC_PWM1->PCR, 8 + P2_05_PWM_channel);      // disable PWM1 module control of this pin
+      util::bit_clear(LPC_PWM1->PCR, 8 + P2_05_PWM_channel);      // disable PWM1 module control of this pin
       LPC_PINCON->PINSEL4 &= ~(0x3 <<  4);            // return pin to general purpose I/O
       direct_table[P2_05_PWM_channel - 1].assigned = false;
       return true;
@@ -385,50 +397,38 @@ bool LPC1768_PWM_write(pin_t pin, uint32_t value) {
   switch (pin) {
     case P1_23:                                                           // MKS Sbase Servo 0, PWM1 channel 4  (J3-8 PWM1.4)
       if (!direct_table[P1_23_PWM_channel - 1].assigned) return false;
-      LPC_PWM1->PCR |=  _BV(8 + P1_23_PWM_channel); // enable PWM1 module control of this pin
-      LPC_PINCON->PINSEL3 = 0x2 <<  14;             // must set pin function AFTER setting PCR
       // load the new time value
-      LPC_PWM1->MR4 = MAX(MIN(value, direct_table[P1_23_PWM_channel - 1].max), direct_table[P1_23_PWM_channel - 1].min);
+      LPC_PWM1->MR4 = util::max(util::min(value, direct_table[P1_23_PWM_channel - 1].max), direct_table[P1_23_PWM_channel - 1].min);
       LPC_PWM1->LER = 0x1 << P1_23_PWM_channel; // Set the latch Enable Bit to load the new Match Value on the next MR0
       return true;
     case P1_20:                                                           // Servo 0, PWM1 channel 2 (Pin 11  P1.20 PWM1.2)
       if (!direct_table[P1_20_PWM_channel - 1].assigned) return false;
-      LPC_PWM1->PCR |=  _BV(8 + P1_20_PWM_channel); // enable PWM1 module control of this pin
-      LPC_PINCON->PINSEL3 |= 0x2 <<  8;             // must set pin function AFTER setting PCR
       // load the new time value
-      LPC_PWM1->MR2 = MAX(MIN(value, direct_table[P1_20_PWM_channel - 1].max), direct_table[P1_20_PWM_channel - 1].min);
+      LPC_PWM1->MR2 = util::max(util::min(value, direct_table[P1_20_PWM_channel - 1].max), direct_table[P1_20_PWM_channel - 1].min);
       LPC_PWM1->LER = 0x1 << P1_20_PWM_channel; // Set the latch Enable Bit to load the new Match Value on the next MR0
       return true;
     case P1_21:                                                           // Servo 1, PWM1 channel 3 (Pin 6  P1.21 PWM1.3)
       if (!direct_table[P1_21_PWM_channel - 1].assigned) return false;
-      LPC_PWM1->PCR |=  _BV(8 + P1_21_PWM_channel); // enable PWM1 module control of this pin
-      LPC_PINCON->PINSEL3 |= 0x2 << 10;              // must set pin function AFTER setting PCR
       // load the new time value
-      LPC_PWM1->MR3 = MAX(MIN(value, direct_table[P1_21_PWM_channel - 1].max), direct_table[P1_21_PWM_channel - 1].min);
+      LPC_PWM1->MR3 = util::max(util::min(value, direct_table[P1_21_PWM_channel - 1].max), direct_table[P1_21_PWM_channel - 1].min);
       LPC_PWM1->LER = 0x1 << P1_21_PWM_channel; // Set the latch Enable Bit to load the new Match Value on the next MR0
       return true;
     case P1_18:                                                           // Servo 3, PWM1 channel 1 (Pin 4  P1.18 PWM1.1)
       if (!direct_table[P1_18_PWM_channel - 1].assigned) return false;
-      LPC_PWM1->PCR |=  _BV(8 + P1_18_PWM_channel); // enable PWM1 module control of this pin
-      LPC_PINCON->PINSEL3 |= 0x2 <<  4;             // must set pin function AFTER setting PCR
       // load the new time value
-      LPC_PWM1->MR1 = MAX(MIN(value, direct_table[P1_18_PWM_channel - 1].max), direct_table[P1_18_PWM_channel - 1].min);
+      LPC_PWM1->MR1 = util::max(util::min(value, direct_table[P1_18_PWM_channel - 1].max), direct_table[P1_18_PWM_channel - 1].min);
       LPC_PWM1->LER = 0x1 << P1_18_PWM_channel; // Set the latch Enable Bit to load the new Match Value on the next MR0
       return true;
     case P2_04:                                                           // D9 FET, PWM1 channel 5 (Pin 9  P2_04 PWM1.5)
       if (!direct_table[P2_04_PWM_channel - 1].assigned) return false;
-      LPC_PWM1->PCR |=  _BV(8 + P2_04_PWM_channel); // enable PWM1 module control of this pin
-      LPC_PINCON->PINSEL4 |= 0x1 <<  8;             // must set pin function AFTER setting PCR
       // load the new time value
-      LPC_PWM1->MR5 = MAX(MIN(value, direct_table[P2_04_PWM_channel - 1].max), direct_table[P2_04_PWM_channel - 1].min);
+      LPC_PWM1->MR5 = util::max(util::min(value, direct_table[P2_04_PWM_channel - 1].max), direct_table[P2_04_PWM_channel - 1].min);
       LPC_PWM1->LER = 0x1 << P2_04_PWM_channel; // Set the latch Enable Bit to load the new Match Value on the next MR0
       return true;
     case P2_05:                                                           // D10 FET, PWM1 channel 6 (Pin 10  P2_05 PWM1.6)
       if (!direct_table[P2_05_PWM_channel - 1].assigned) return false;
-      LPC_PWM1->PCR |=  _BV(8 + P2_05_PWM_channel); // enable PWM1 module control of this pin
-      LPC_PINCON->PINSEL4 |= 0x1 << 10;             // must set pin function AFTER setting PCR
       // load the new time value
-      LPC_PWM1->MR6 = MAX(MIN(value, direct_table[P2_05_PWM_channel - 1].max), direct_table[P2_05_PWM_channel - 1].min);
+      LPC_PWM1->MR6 = util::max(util::min(value, direct_table[P2_05_PWM_channel - 1].max), direct_table[P2_05_PWM_channel - 1].min);
       LPC_PWM1->LER = 0x1 << P2_05_PWM_channel; // Set the latch Enable Bit to load the new Match Value on the next MR0
       return true;
   }
@@ -452,7 +452,7 @@ bool LPC1768_PWM_write(pin_t pin, uint32_t value) {
     return false;
   }
 
-  work_table[slot].microseconds = MAX(MIN(value, work_table[slot].max), work_table[slot].min);;
+  work_table[slot].microseconds = util::max(util::min(value, work_table[slot].max), work_table[slot].min);;
   work_table[slot].active_flag  = true;
 
   LPC1768_PWM_sort();    // sort table by microseconds
@@ -488,16 +488,15 @@ bool useable_hardware_PWM(pin_t pin) {
 
 
 #define PWM_LPC1768_ISR_SAFETY_FACTOR 5  // amount of time needed to guarantee MR1 count will be above TC
-volatile bool in_PWM_isr = false;
 
 HAL_PWM_TIMER_ISR {
+  uint32_t interrupts = HAL_PWM_TIMER->IR;
+  HAL_PWM_TIMER->IR = interrupts;  // clear all interrupts
+
   bool first_active_entry = true;
   uint32_t next_MR1_val;
 
-  if (in_PWM_isr) goto exit_PWM_ISR;  // prevent re-entering this ISR
-  in_PWM_isr = true;
-
-  if (HAL_PWM_TIMER->IR & 0x01) {  // MR0 interrupt
+  if (interrupts & 0x01) {  // MR0 interrupt
     next_MR1_val = first_MR1_value;               // only used if have a blank ISR table
     if (ISR_table_update) {                       // new values have been loaded so swap tables
       temp_table = active_table;
@@ -506,7 +505,6 @@ HAL_PWM_TIMER_ISR {
       ISR_table_update = false;
     }
   }
-  HAL_PWM_TIMER->IR = 0x3F;  // clear all interrupts
 
   for (uint8_t i = 0; i < NUM_ISR_PWMS; i++) {
     if (active_table[i].active_flag) {
@@ -526,10 +524,8 @@ HAL_PWM_TIMER_ISR {
     }
   }
   if (first_active_entry) next_MR1_val = LPC_PWM1_MR0 + 1;  // empty table so disable MR1 interrupt
-  HAL_PWM_TIMER->MR1 = MAX(next_MR1_val, HAL_PWM_TIMER->TC + PWM_LPC1768_ISR_SAFETY_FACTOR); // set next
-  in_PWM_isr = false;
+  HAL_PWM_TIMER->MR1 = util::max(next_MR1_val, HAL_PWM_TIMER->TC + PWM_LPC1768_ISR_SAFETY_FACTOR); // set next
 
-  exit_PWM_ISR:
   return;
 }
 
