@@ -39,6 +39,7 @@ extern void MSC_GetCBW (void);
 extern void MSC_SetCSW (void);
 extern void MSC_BulkIn (void);
 extern void MSC_BulkOut(void);
+extern void MSC_DMA (uint32_t event);
 
 enum struct Sense_KEY : uint8_t {
   NO_SENSE,
@@ -107,7 +108,7 @@ struct Sense {
 uint32_t MSC_Aquire_Lock(void);
 uint32_t MSC_Release_Lock(void);
 uint32_t MSC_SD_Init(uint8_t pdrv);
-
+uint32_t MSC_SD_Release(uint8_t pdrv);
 void MSC_RunDeferredCommands(void);
 
 #endif  /* __MSCUSER_H__ */

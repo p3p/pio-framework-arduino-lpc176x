@@ -30,7 +30,7 @@ extern "C" {
 #define USB_RAM_SZ      0x00004000  /* USB RAM Size (16kB) */
 
 /* DMA Endpoint Descriptors */
-#define DD_NISO_CNT             16  /* Non-Iso EP DMA Descr. Count (max. 32) */
+#define DD_NISO_CNT             32  /* Non-Iso EP DMA Descr. Count (max. 32) */
 #define DD_ISO_CNT               8  /* Iso EP DMA Descriptor Count (max. 32) */
 #define DD_NISO_SZ    (DD_NISO_CNT * 16)    /* Non-Iso DMA Descr. Size */
 #define DD_ISO_SZ     (DD_ISO_CNT  * 20)    /* Iso DMA Descriptor Size */
@@ -103,9 +103,10 @@ extern uint32_t USB_ReadStatusEP(uint32_t EPNum);
 extern void USB_SetInterruptEP(uint32_t EPNum);
 extern uint32_t USB_ReadEP     (uint32_t EPNum, uint8_t *pData);
 extern uint32_t USB_WriteEP    (uint32_t EPNum, uint8_t *pData, uint32_t cnt);
-extern uint32_t  USB_DMA_Setup  (uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD);
+extern uint32_t  USB_DMA_Setup  (uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD, bool Trigger);
 extern void  USB_DMA_Enable (uint32_t EPNum);
 extern void  USB_DMA_Disable(uint32_t EPNum);
+extern void  USB_DMA_Trigger(uint32_t EPNum);
 extern uint32_t USB_DMA_Status (uint32_t EPNum);
 extern uint32_t USB_DMA_BufAdr (uint32_t EPNum);
 extern uint32_t USB_DMA_BufCnt (uint32_t EPNum);

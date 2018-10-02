@@ -26,12 +26,16 @@ extern "C" {
 #include <usb/usb.h>
 #include <usb/msc.h>
 #include <usb/usbcfg.h>
+#include <usb/usbreg.h>
 #include <usb/usbhw.h>
 #include <usb/usbcore.h>
+#include <usb/usbuser.h>
 #include <usb/mscuser.h>
+#include <Arduino.h>
 
 #include <chanfs/diskio.h>
-
+//uint8_t  block_cache[MSC_BLOCK_SIZE] __attribute__((section("USB_RAM"))) = {0};
+uint8_t *block_cache = (uint8_t *)DMA_BUF_ADR;
 DWORD MSC_BlockCount = 0;
 
 uint32_t MemOK;                   /* Memory OK */
@@ -43,8 +47,8 @@ uint32_t block_offset;            /* current block offset*/
 
 uint8_t  BulkStage;               /* Bulk Stage */
 
-uint8_t  BulkBuf[MSC_MAX_PACKET]; /* Bulk In/Out Buffer */
-uint8_t  block_cache[MSC_BLOCK_SIZE];
+//uint8_t  BulkBuf[MSC_MAX_PACKET]; /* Bulk In/Out Buffer */
+uint8_t    *BulkBuf = (uint8_t *)(DMA_BUF_ADR + MSC_BLOCK_SIZE);
 uint8_t  BulkLen;                 /* Bulk In/Out Length */
 Sense sense_data;
 
@@ -52,6 +56,7 @@ Sense sense_data;
 #define CMD_START  1
 #define CMD_READ   2
 #define CMD_WRITE  3
+#define CMD_DELAY  4
 volatile uint8_t deferred_cmd = 0;
 volatile uint32_t missed_ops = 0;
 #define CACHE_INVALID  0xffffffff
@@ -91,6 +96,7 @@ uint32_t MSC_Aquire_Lock() {
   NVIC_DisableIRQ(USB_IRQn);
   media_lock = DEVICE_LOCK;
   NVIC_EnableIRQ(USB_IRQn);
+  MSC_SD_Release(0);
   _DBG("Device MSC Lock\n");
   device_wants_lock = false;
   return 0;
@@ -100,10 +106,11 @@ uint32_t MSC_Release_Lock() {
   if(media_lock != DEVICE_LOCK) {
     return 0; // Didn't have lock
   }
-  media_lock = NO_LOCK;
-  if(disk_status(0) != STA_NOINIT) disk_ioctl(0, GET_SECTOR_COUNT, (void *)(&MSC_BlockCount));
+  MSC_SD_Init(0);
+  //if(disk_status(0) != STA_NOINIT) disk_ioctl(0, GET_SECTOR_COUNT, (void *)(&MSC_BlockCount));
   _DBG("Device MSC Unlock\n");
   NVIC_DisableIRQ(USB_IRQn);
+  media_lock = NO_LOCK;
   sense_data.set(Sense_KEY::UNIT_ATTENTION, Sense_ASC::MEDIA_CHANGED);
   NVIC_EnableIRQ(USB_IRQn);
   return 0;   // Released
@@ -138,8 +145,11 @@ uint32_t MSC_SD_Release(uint8_t pdrv) {
 }
 
 uint32_t MSC_SD_Init(uint8_t pdrv) {
+  //_DBG("IO Address "); _DBD32((uint32_t) block_cache); _DBG("\n");
   DSTATUS ret = disk_initialize(pdrv);
   if(ret) return ret;
+  deferred_cmd = CMD_NONE;
+  cache_lba = CACHE_INVALID;
   if(disk_ioctl (pdrv, GET_SECTOR_COUNT, (void *)(&MSC_BlockCount))) return 1;
   return 0;
 }
@@ -158,6 +168,20 @@ void MSC_Start() {
   }
   MSC_SetCSW();
 }
+
+static void MSC_QueueDMAWrite(uint8_t *pData, uint32_t cnt, bool trigger) {
+  //_DBG("Write "); _DBD32((uint32_t) pData); _DBG(" "); _DBD32(cnt); _DBG("\n");
+  USB_DMA_DESCRIPTOR desc;
+  desc.BufAdr = (uint32_t) pData;
+  desc.BufLen = cnt;
+  desc.MaxSize = (cnt > 0 ? MSC_MAX_PACKET : 0);
+  desc.InfoAdr = 0;
+  desc.Cfg.Val = 0;
+  uint32_t ret = USB_DMA_Setup(MSC_EP_IN, &desc, trigger);
+  //_DBG("DMA Setup "); _DBD32(ret); _DBG("\n");
+  //USB_DMA_Enable(MSC_EP_IN);
+}
+
 
 void MSC_DeferCommand(uint8_t cmd) {
   deferred_cmd = cmd;
@@ -201,6 +225,8 @@ void MSC_StartStopUnit() {
  */
 
 uint32_t MSC_Reset (void) {
+  //USB_DMA_Disable(MSC_EP_IN);
+  _DBG("MSC_Reset state "); _DBD32(BulkStage); _DBG("\n");
   BulkStage = MSC_BS_CBW;
   ep_in_stalled = false;
   return (TRUE);
@@ -217,14 +243,22 @@ void MSC_UnstallEP(uint32_t EPNum) {
   if ((EPNum == MSC_EP_IN) && ep_in_stalled) {
     /* Compliance Test: rewrite CSW after unstall */
     if (CSW.dSignature == MSC_CSW_Signature) {
-      USB_WriteEP(MSC_EP_IN, (uint8_t *) &CSW, sizeof(CSW));
+      //USB_WriteEP(MSC_EP_IN, (uint8_t *) &CSW, sizeof(CSW));
+      for(int i = 0; i < sizeof(CSW); i++)
+        BulkBuf[i] = ((uint8_t *)&CSW)[i];
+        //MSC_QueueDMAWrite((uint8_t *)&CSW, sizeof(CSW), true);
+        MSC_QueueDMAWrite(BulkBuf, sizeof(CSW), true);
+      //MSC_QueueDMAWrite((uint8_t *)&CSW, sizeof(CSW), true);
+
     }
     ep_in_stalled = false;
   }
 }
 
 void MSC_StallEP(uint32_t EPNum) {
+  _DBG("Stall EP\n");
   USB_SetStallEP(EPNum);
+  //USB_DMA_Setup(MSC_EP_IN, nullptr);
   // keep track of the stall state of the IN EP.
   if (EPNum == MSC_EP_IN)
     ep_in_stalled = true;
@@ -255,6 +289,7 @@ bool MSC_CheckAvailable(void) {
   }
   else
     return true;
+    //_DBG("Available fail\n");
   CSW.bStatus = CSW_CMD_FAILED;
   MSC_SetCSW();
   return false;
@@ -269,8 +304,12 @@ bool host_get_lock(void) {
 }
 
 static void MSC_CompleteRead (void) {
-  uint32_t n = (length > MSC_MAX_PACKET) ? MSC_MAX_PACKET : length;
-  USB_WriteEP(MSC_EP_IN, &block_cache[block_offset], n);
+  //uint32_t n = (length > MSC_MAX_PACKET) ? MSC_MAX_PACKET : length;
+  //MSC_QueueDMAWrite(&block_cache[block_offset], n, true);
+  //USB_WriteEP(MSC_EP_IN, &block_cache[block_offset], n);
+  uint32_t n = (length > MSC_BLOCK_SIZE) ? MSC_BLOCK_SIZE : length;
+
+  MSC_QueueDMAWrite(block_cache, n, true);
 
   block_offset += n;
   length -= n;
@@ -299,19 +338,24 @@ static void MSC_CompleteRead (void) {
  */
 void MSC_MemoryRead (void) {
   if (deferred_cmd != CMD_NONE){
+    //MSC_QueueDMAWrite(block_cache, 0, true);
+    _DBG("Defer1\n");
     return;
   }
   if(!host_get_lock()) {
+    _DBG("Lock failed\n");
      return;
   }
   WDT_Feed();
 
   if (lba > MSC_BlockCount) {
-    _DBG("Invalid LBA\n");
+    //_DBG("Invalid LBA\n");
   }
 
   if(lba != cache_lba) {
     MSC_DeferCommand(CMD_READ);
+    //MSC_QueueDMAWrite(block_cache, 0, true);
+    //_DBG("Defer2\n");
     return;
   }
   MSC_CompleteRead();
@@ -363,8 +407,8 @@ void MSC_MemoryWrite (void) {
   if(block_offset + BulkLen >= MSC_BLOCK_SIZE) {
     cache_lba = lba;
     if(!(disk_status(0) & STA_PROTECT)){
-      MSC_DeferCommand(CMD_WRITE);
-      return;
+      //MSC_DeferCommand(CMD_WRITE);
+      //return;
     }
   }
   MSC_CompleteWrite();
@@ -409,10 +453,11 @@ void MSC_MemoryVerify (void) {
  * user program.
  */
 void MSC_RunDeferredCommands() {
+  uint32_t res;
   uint8_t cmd = deferred_cmd;
   if (cmd == CMD_NONE) return;
-  NVIC_DisableIRQ(USB_IRQn);
-  deferred_cmd = CMD_NONE;
+  //NVIC_DisableIRQ(USB_IRQn);
+  //deferred_cmd = CMD_NONE;
   switch(cmd) {
     case CMD_NONE:
       break;
@@ -420,9 +465,12 @@ void MSC_RunDeferredCommands() {
       MSC_Start();
       break;
     case CMD_READ:
-      disk_read (0, block_cache, lba, 1);
+      //_DBG("Start read "); _DBD32(lba);
+      res = disk_read (0, block_cache, lba, 1);
+      //_DBG(" Res "); _DBD32(res); _DBG("\n");
       cache_lba = lba;
-      MSC_CompleteRead();
+      //_DBG("Read block\n");
+      //MSC_CompleteRead();
       break;
     case CMD_WRITE:
       disk_write(0, block_cache, cache_lba, 1);
@@ -432,8 +480,14 @@ void MSC_RunDeferredCommands() {
         missed_ops = 0;
       }
       break;
+    case CMD_DELAY:
+      delay(10);
+      BulkStage = MSC_BS_DATA_IN_LAST;
+      break;
   }
-  NVIC_EnableIRQ(USB_IRQn);
+  deferred_cmd = CMD_NONE;
+  USB_DMA_Trigger(MSC_EP_IN);
+  //NVIC_EnableIRQ(USB_IRQn);
 }
 
 /*
@@ -457,12 +511,12 @@ uint32_t MSC_RWSetup (void) {
 
   block_offset = 0;
   length = transfer_count * MSC_BLOCK_SIZE;
-
   if (CBW.dDataLength != (transfer_count * MSC_BLOCK_SIZE)) {
     CSW.bStatus = CSW_PHASE_ERROR;
     MSC_SetCSW();
     return (FALSE);
   }
+  //_DBG("R/W LBA "); _DBD32(lba); _DBG(" len "); _DBD32(length);
   return (TRUE);
 }
 
@@ -485,6 +539,7 @@ uint32_t DataInFormat (void) {
     MSC_SetCSW();
     return (FALSE);
   }
+  //_DBG("Data in ok\n");
   return (TRUE);
 }
 
@@ -500,7 +555,8 @@ void DataInTransfer (void) {
     BulkLen = CBW.dDataLength;
   }
 
-  USB_WriteEP(MSC_EP_IN, BulkBuf, BulkLen);
+  //USB_WriteEP(MSC_EP_IN, BulkBuf, BulkLen);
+  MSC_QueueDMAWrite(BulkBuf, BulkLen, true);
   BulkStage = MSC_BS_DATA_IN_LAST;
 
   CSW.dDataResidue -= BulkLen;
@@ -751,6 +807,7 @@ fail: CSW.bStatus = CSW_CMD_FAILED;
       _DBH(CBW.CB[0]);
       _DBG("\n");
     } else {
+      //_DBG("CBW "); _DBD32(CBW.CB[0]); _DBG("\n");
       switch (CBW.CB[0]) {
         case SCSI_TEST_UNIT_READY:
           MSC_TestUnitReady();
@@ -856,6 +913,7 @@ void MSC_SetCSW (void) {
   CSW.dSignature = MSC_CSW_Signature;
   // Stall endpoint if required see: http://www.usb.org/developers/docs/devclass_docs/usbmassbulk_10.pdf
   if (CSW.dDataResidue != 0) {
+    _DBG("Stall data residue "); _DBD32(CBW.CB[0]); _DBG("\n");
     if ((CBW.bmFlags & 0x80) == 0) {
       MSC_StallEP(MSC_EP_OUT);
     }
@@ -867,7 +925,12 @@ void MSC_SetCSW (void) {
     MSC_StallEP(MSC_EP_IN);
   }
 
-  USB_WriteEP(MSC_EP_IN, (uint8_t *)&CSW, sizeof(CSW));
+  //USB_WriteEP(MSC_EP_IN, (uint8_t *)&CSW, sizeof(CSW));
+  for(int i = 0; i < sizeof(CSW); i++)
+    BulkBuf[i] = ((uint8_t *)&CSW)[i];
+    //MSC_QueueDMAWrite((uint8_t *)&CSW, sizeof(CSW), true);
+    MSC_QueueDMAWrite(BulkBuf, sizeof(CSW), true);
+
 }
 
 
@@ -878,6 +941,8 @@ void MSC_SetCSW (void) {
  */
 
 void MSC_BulkIn (void) {
+  uint32_t n;
+  //_DBG("Bulkin "); _DBH(BulkStage); _DBG("\n");
   switch (BulkStage) {
     case MSC_BS_DATA_IN:
       switch (CBW.CB[0]) {
@@ -887,11 +952,11 @@ void MSC_BulkIn (void) {
       }
       break;
     case MSC_BS_DATA_IN_LAST:
+      //USB_DMA_Disable(MSC_EP_IN);
       MSC_SetCSW();
       break;
-    case MSC_BS_DATA_IN_LAST_STALL:
-      MSC_StallEP(MSC_EP_IN);
-      MSC_SetCSW();
+    case MSC_BS_DATA_IN_LAST_DELAY:
+      MSC_DeferCommand(CMD_DELAY);
       break;
     case MSC_BS_CSW:
       BulkStage = MSC_BS_CBW;
@@ -907,6 +972,7 @@ void MSC_BulkIn (void) {
  */
 
 void MSC_BulkOut (void) {
+  //_DBG("Bulkout "); _DBH(BulkStage); _DBG("\n");
   switch (BulkStage) {
     case MSC_BS_CSW:
       // This phase will normally coincide with a BulkIn request. However
@@ -939,4 +1005,22 @@ void MSC_BulkOut (void) {
       MSC_SetCSW();
       break;
   }
+}
+
+void MSC_DMA (uint32_t event) {
+  //_DBG("DMA event "); _DBD32(event); _DBG(" "); _DBD32(USB_DMA_Status(MSC_EP_IN)); _DBG("\n");
+  uint32_t len;
+  switch(event) {
+    case USB_EVT_IN_DMA_EOT:
+      //MSC_BulkIn();
+      break;
+    case USB_EVT_IN_DMA_NDR:
+      //USB_DMA_Disable(MSC_EP_IN);
+      MSC_BulkIn();
+      break;
+      case USB_EVT_IN_DMA_ERR:
+      _DBG("Error "); _DBD32(USB_DMA_Status(MSC_EP_IN)); _DBG("\n");
+      break;
+  }
+  //_DBG("End event "); _DBD32(event); _DBG("\n");
 }
