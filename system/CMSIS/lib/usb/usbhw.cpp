@@ -490,7 +490,7 @@ const uint32_t DDSz [2] = { 16,          20         };
  *    Return Value:    TRUE - Success, FALSE - Error
  */
 
-uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD, bool Trigger) {
+uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD) {
   uint32_t num, nxt, iso, n, active;
   uint32_t current;
   uint32_t * nxt_ptr;
@@ -581,11 +581,7 @@ uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD, bool Trigger) {
     }
   }
   */
-  if (Trigger) {
-    USB_DMA_Enable(EPNum);
-    //LPC_USB->USBDMARSet = 1 << num;
-  }
-
+  USB_DMA_Enable(EPNum);
   return (TRUE); /* Success */
 }
 

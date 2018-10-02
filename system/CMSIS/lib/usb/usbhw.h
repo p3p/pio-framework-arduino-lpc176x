@@ -103,7 +103,7 @@ extern uint32_t USB_ReadStatusEP(uint32_t EPNum);
 extern void USB_SetInterruptEP(uint32_t EPNum);
 extern uint32_t USB_ReadEP     (uint32_t EPNum, uint8_t *pData);
 extern uint32_t USB_WriteEP    (uint32_t EPNum, uint8_t *pData, uint32_t cnt);
-extern uint32_t  USB_DMA_Setup  (uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD, bool Trigger);
+extern uint32_t  USB_DMA_Setup  (uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD);
 extern void  USB_DMA_Enable (uint32_t EPNum);
 extern void  USB_DMA_Disable(uint32_t EPNum);
 extern void  USB_DMA_Trigger(uint32_t EPNum);
