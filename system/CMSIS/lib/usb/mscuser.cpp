@@ -851,7 +851,6 @@ void MSC_SetCSW (void) {
   CSW.dSignature = MSC_CSW_Signature;
   // Stall endpoint if required see: http://www.usb.org/developers/docs/devclass_docs/usbmassbulk_10.pdf
   if (CSW.dDataResidue != 0) {
-    _DBG("Stall data residue "); _DBD32(CBW.CB[0]); _DBG("\n");
     if ((CBW.bmFlags & 0x80) == 0) {
       MSC_StallEP(MSC_EP_OUT);
     }
