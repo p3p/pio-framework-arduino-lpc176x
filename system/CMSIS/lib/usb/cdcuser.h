@@ -61,8 +61,7 @@ extern unsigned short CDC_GetSerialState(void);
 /* flow control */
 extern unsigned short CDC_DepInEmpty;         // DataEndPoint IN empty
 __inline void CDC_FlushBuffer() {
-  if (CDC_DepInEmpty)
-    USB_SetInterruptEP(CDC_DEP_IN);
+  //if (CDC_DepInEmpty)
+    //USB_SetInterruptEP(CDC_DEP_IN);
 }
 #endif  /* __CDCUSER_H__ */
-

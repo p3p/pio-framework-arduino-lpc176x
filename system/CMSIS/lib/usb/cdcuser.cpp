@@ -255,7 +255,7 @@ void CDC_BulkIn(void) {
       UsbSerial.transmit_buffer.read(&BulkBufIn[i]);
     }
     USB_WriteEP(CDC_DEP_IN, &BulkBufIn[0], numBytesAvail);
-    epStat = USB_ReadStatusEP(CDC_DEP_IN);
+    //epStat = USB_ReadStatusEP(CDC_DEP_IN);
   }
   CDC_DepInEmpty = (epStat & EP_SEL_F) == 0;
 }
