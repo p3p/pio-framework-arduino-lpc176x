@@ -36,7 +36,6 @@ unsigned char BulkBufOut[USB_CDC_BUFSIZE];            // Buffer to store USB OUT
 unsigned char NotificationBuf[10];
 
 CDC_LINE_CODING CDC_LineCoding = { 921600, 0, 0, 8 };
-unsigned short CDC_DepInEmpty = 1;                   // Data IN EP is empty
 unsigned short CDC_LineState = 0;
 unsigned short CDC_SerialState = 0;
 
@@ -78,7 +77,6 @@ uint32_t CDC_OutBufAvailChar(uint32_t *availChar) {
  Return Value: None
  *---------------------------------------------------------------------------*/
 void CDC_Init() {
-  CDC_DepInEmpty = 1;
   CDC_LineState = 0;
   CDC_SerialState = 0;
   UsbSerial.host_connected = false;
@@ -93,7 +91,6 @@ void CDC_Init() {
 void CDC_Suspend() {
   UsbSerial.host_connected = false;
   UsbSerial.transmit_buffer.clear();
-  CDC_DepInEmpty = 0;
 }
 
 /*----------------------------------------------------------------------------
@@ -104,7 +101,6 @@ void CDC_Suspend() {
  *---------------------------------------------------------------------------*/
 void CDC_Resume() {
   UsbSerial.host_connected = (CDC_LineState & CDC_DTE_PRESENT) != 0 ? true : false;
-  CDC_DepInEmpty = 1;
 }
 
 /*----------------------------------------------------------------------------
@@ -116,8 +112,6 @@ void CDC_Resume() {
 void CDC_Reset() {
   // USB reset, any packets in transit may have been flushed
   UsbSerial.host_connected = (CDC_LineState & CDC_DTE_PRESENT) != 0 ? true : false;
-  CDC_DepInEmpty = 1;
-  CDC_FlushBuffer();
 }
 
 /*----------------------------------------------------------------------------
@@ -255,9 +249,7 @@ void CDC_BulkIn(void) {
       UsbSerial.transmit_buffer.read(&BulkBufIn[i]);
     }
     USB_WriteEP(CDC_DEP_IN, &BulkBufIn[0], numBytesAvail);
-    //epStat = USB_ReadStatusEP(CDC_DEP_IN);
   }
-  CDC_DepInEmpty = (epStat & EP_SEL_F) == 0;
 }
 
 /*----------------------------------------------------------------------------

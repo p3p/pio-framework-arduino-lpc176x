@@ -498,21 +498,6 @@ uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD) {
   iso = pDD->Cfg.Type.IsoEP;                /* Iso or Non-Iso Descriptor */
   num = EPAdr(EPNum);                       /* Endpoint's Physical Address */
 
-  n = USB_DMA_Status(EPNum);
-  if (n != USB_DMA_DONE){
-    _DBG("Start status "); _DBD32(n); _DBG("\n");
-  }
-  if ((LPC_USB->USBEpDMASt & (1 << num)) != 0) {
-    _DBG("DMA Active "); _DBD32(pDD->BufLen); _DBG("\n");
-  }
-  /*
-  if (pDD->BufLen > 0){
-    while (((n=USB_ReadStatusEP(EPNum)) & (EP_SEL_B_1_FULL|EP_SEL_B_2_FULL)) != 0) {
-      _DBG("NF "); _DBD32(n); _DBG(" "); _DBD32(pDD->BufLen);  _DBG("\n");
-      if ((n & EP_SEL_ST) != 0) break;
-    }
-  }
-  */
   for (n = 0; n < 32; n++) {                /* Search for available Memory */
     if ((DDMemMap[iso] & (1 << n)) == 0) {
       break;                                /* Memory found */
@@ -524,12 +509,10 @@ uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD) {
   }
   DDMemMap[iso] |= 1 << n;                  /* Mark Memory Usage */
   nxt = DDAdr[iso] + n * DDSz[iso];         /* Next Descriptor */
-  //_DBG("DMA "); _DBD32(pDD->BufLen); _DBG("\n");
   current = UDCA[num];
   active = udca[num];                          /* Initial Descriptor */
   // move through list freeing all descriptors that have been processed
   while (active && active != current) {                             /* Go through Descriptor List */
-  //while (active) {                             /* Go through Descriptor List */
     uint32_t *active_ptr = (uint32_t *)active;
     n = (active - DDAdr[iso]) / DDSz[iso];   /* Descriptor Index */
     DDMemMap[iso] &= ~(1 << n);           /* Unmark Memory Usage */
@@ -543,8 +526,6 @@ uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD) {
     while (*last_ptr) {
         last_ptr = (uint32_t *)*last_ptr;
     }
-    //if (last_ptr != (uint32_t *)active)
-      //_DBG("Chain DD\n");
   }
   //_DBG("nxt "); _DBD32(UDCA[num]);
   nxt_ptr = (uint32_t *)nxt;
@@ -559,28 +540,14 @@ uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD) {
   if (iso) {
     *nxt_ptr =  pDD->InfoAdr;
   }
-  //LPC_USB->USBEpDMADis = 0;
   if (last_ptr) {
-    //_DBG("Chain DD \n");
     last_ptr[0]  = nxt;           /* Link in new Descriptor */
     last_ptr[1] |= 0x00000004;    /* Next DD is Valid */
     udca[num] = active;
   } else {
-    //_DBG("New DD \n");
-    //_DBG("DMA Enable1 "); _DBD32(LPC_USB->USBEpIntEn); _DBG(" "); _DBD32(LPC_USB->USBDMAIntSt); _DBG(" "); _DBD32(USB_DMA_Status(EPNum)); _DBG("\n");
     udca[num] = nxt;                        /* Save new Descriptor */
     UDCA[num] = nxt;                        /* Update UDCA in USB */
-    //_DBG("DMA Enable2 "); _DBD32(LPC_USB->USBEpIntEn); _DBG(" "); _DBD32(LPC_USB->USBDMAIntSt); _DBG(" "); _DBD32(USB_DMA_Status(EPNum)); _DBG("\n");
   }
-  //LPC_USB->USBEpDMADis = 0;
-  /*
-  if (pDD->BufLen > 0){
-    while (((n=USB_ReadStatusEP(EPNum)) & (EP_SEL_B_1_FULL|EP_SEL_B_2_FULL)) != 0) {
-      _DBG("NF2 "); _DBD32(n); _DBG(" "); _DBD32(pDD->BufLen);  _DBG("\n");
-      if ((n & EP_SEL_ST) != 0) break;
-    }
-  }
-  */
   USB_DMA_Enable(EPNum);
   return (TRUE); /* Success */
 }
@@ -611,11 +578,6 @@ void USB_DMA_Disable (uint32_t EPNum) {
   LPC_USB->USBEpDMADis = 1 << EPAdr(EPNum);
 }
 
-void USB_DMA_Trigger (uint32_t EPNum) {
-  //if ((LPC_USB->USBEpDMASt & (1 << EPAdr(EPNum))) == 0)
-    LPC_USB->USBEpDMAEn = 1 << EPAdr(EPNum);
-    //LPC_USB->USBDMARSet = 1 << EPAdr(EPNum);
-}
 /*
  *  Get USB DMA Endpoint Status
  *    Parameters:      EPNum: Endpoint Number
@@ -629,7 +591,6 @@ uint32_t USB_DMA_Status (uint32_t EPNum) {
 
   ptr = UDCA[EPAdr(EPNum)];                 /* Current Descriptor */
   if (ptr == 0) return (USB_DMA_INVALID);
-//_DBD32(*((uint32_t *)(ptr + 1*4))); _DBG(" ");
   val = *((uint32_t *)(ptr + 3*4));            /* Status Information */
   switch ((val >> 1) & 0x0F) {
     case 0x00:                              /* Not serviced */

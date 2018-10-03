@@ -119,9 +119,7 @@ public:
     const uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
     while (transmit_buffer.write(c) == 0 && util::pending(millis(), usb_tx_timeout)) { // Block until there is free room in buffer
       if (!host_connected) return 0;        // Break infinite loop on host disconect
-      CDC_FlushBuffer();
     }
-    CDC_FlushBuffer();
     return 1;
   }
 
@@ -152,16 +150,8 @@ public:
     if (length > 0 && length < 256) {
       uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
       while (i < (size_t)length && host_connected && util::pending(millis(), usb_tx_timeout)) {
-        size_t cnt = transmit_buffer.write(buffer[i]);
-        if (cnt == 0) {
-          CDC_FlushBuffer();
-        } else {
-          i += cnt;
-          usb_tx_timeout = millis() + USBCDCTIMEOUT;
-        }
+        i += transmit_buffer.write(buffer[i]);
       }
-      if (i > 0)
-        CDC_FlushBuffer();
     }
     return i;
   }
