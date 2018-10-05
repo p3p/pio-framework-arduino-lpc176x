@@ -36,6 +36,8 @@
 
 #include <stdint.h>
 
+#include <pinmapping.h>
+
 // Macros
 //values in microseconds
 #define MIN_PULSE_WIDTH       500     // the shortest pulse sent to a servo
@@ -43,7 +45,7 @@
 #define DEFAULT_PULSE_WIDTH  1500     // default pulse width when servo is attached
 #define REFRESH_INTERVAL    20000     // minimum time to refresh servos in microseconds
 
-#define MAX_SERVOS             4
+#define MAX_SERVOS             8
 
 #define INVALID_SERVO         255     // flag indicating an invalid servo index
 
@@ -51,8 +53,8 @@
 // Types
 
 typedef struct {
-  uint8_t nbr        : 8 ;            // a pin number from 0 to 254 (255 signals invalid pin)
-  uint8_t isActive   : 1 ;            // true if this channel is enabled, pin not pulsed if false
+  pin_t nbr;            // a pin number from 0 to 254 (255 signals invalid pin)
+  bool isActive;            // true if this channel is enabled, pin not pulsed if false
 } ServoPin_t;
 
 typedef struct {
@@ -69,8 +71,8 @@ extern ServoInfo_t servo_info[MAX_SERVOS];
 class Servo {
   public:
     Servo();
-    int8_t attach(const int pin);            // attach the given pin to the next free channel, set pinMode, return channel number (-1 on fail)
-    int8_t attach(const int pin, const int min, const int max); // as above but also sets min and max values for writes.
+    int8_t attach(const pin_t pin);            // attach the given pin to the next free channel, set pinMode, return channel number (-1 on fail)
+    int8_t attach(const pin_t pin, const int min, const int max); // as above but also sets min and max values for writes.
     void detach();
     void write(int value);             // if value is < 200 it is treated as an angle, otherwise as pulse width in microseconds
     void writeMicroseconds(int value); // write pulse width in microseconds

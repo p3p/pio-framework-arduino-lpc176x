@@ -83,11 +83,11 @@ Servo::Servo() {
   else this->servoIndex = INVALID_SERVO;  // too many servos
 }
 
-int8_t Servo::attach(const int pin) {
+int8_t Servo::attach(const pin_t pin) {
   return this->attach(pin, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
 }
 
-int8_t Servo::attach(const int pin, const int min, const int max) {
+int8_t Servo::attach(const pin_t pin, const int min, const int max) {
 
   if (this->servoIndex >= MAX_SERVOS) return -1;
 

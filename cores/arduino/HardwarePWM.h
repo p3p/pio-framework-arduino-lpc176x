@@ -53,6 +53,10 @@ constexpr bool pwm_pin_active(const pin_t pin) {
   return LPC1768_PIN_PWM(pin) && util::bit_test(active_pwm_pins, pwm_pin_id(pin));
 }
 
+__attribute__((always_inline)) inline void pwm_set_period(const uint32_t period) {
+  LPC_PWM1->MR0  = period - 1;               // TC resets every period cycles
+}
+
 // update the bitset an activate hardware pwm channel for output
 __attribute__((always_inline)) inline void pwm_activate_channel(const pin_t pin) {
   util::bit_set(active_pwm_pins, pwm_pin_id(pin));         // mark the pin as active
