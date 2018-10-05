@@ -23,8 +23,6 @@
 constexpr uint32_t PWM_MAX_SOFTWARE_CHANNELS = 20;
 constexpr uint32_t PWM_MATCH_OFFSET = 2; // in ticks (default prescaler makes this microseconds)
 
-void software_pwm_init(const uint32_t prescale, const uint32_t period);
-
 struct SwPwmData{ // 14bytes double linked list node, (16 with packing)
   pin_t pin = P_NC;
   uint32_t value = 0;
@@ -57,6 +55,10 @@ struct SoftwarePwmTable {
     LPC_TIM3->TCR = util::bit_value(0);       // enable the timer
 
     NVIC_SetPriority(TIMER3_IRQn, NVIC_EncodePriority(0, int_priority, 0));
+  }
+
+  void set_period(const uint32_t period) {
+    LPC_TIM3->MR0 = period - 1;
   }
 
   constexpr uint32_t size() {

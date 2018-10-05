@@ -57,7 +57,7 @@ bool LPC1768_PWM_detach_pin(const pin_t pin) {
     return true;
   }
 
-  // Fall back on based PWM
+  // Fall back on Timer3 based PWM
   if(SoftwarePWM.remove(pin)) return true;
 
   return false;
