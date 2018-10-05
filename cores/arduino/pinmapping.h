@@ -86,102 +86,104 @@ typedef int16_t pin_t;
 #define ADC_CHAN_5  0110
 #define ADC_CHAN_6  0111
 #define ADC_CHAN_7  1000
-
 #define ADC_CHAN_(c)  ADC_CHAN_##c
 #define ADC_CHAN(p)   ADC_CHAN_(p)
 
-#define BOOL_0 0
-#define BOOL_1 1
-#define BOOL_(b)      BOOL_##b
+#define PWM_NONE    000
+#define PWM_CHAN_1  001
+#define PWM_CHAN_2  010
+#define PWM_CHAN_3  011
+#define PWM_CHAN_4  100
+#define PWM_CHAN_5  101
+#define PWM_CHAN_6  110
+#define PWM_CHAN_(c) PWM_CHAN_##c
+#define PWM_CHAN(p)  PWM_CHAN_(p)
 
-#define INTERRUPT(b)  BOOL_(b)
-#define PWM(b)        BOOL_(b)
-
-// Combine elements into pin bits: 0b00AAAAWIPPPNNNNN
-#define LPC1768_PIN_(port, pin, int, pwm, adc)  0b00##adc##pwm##int##port##pin
-#define LPC1768_PIN(port, pin, int, pwm, adc)   LPC1768_PIN_(port, pin, int, pwm, adc)
+// Combine elements into pin bits: 0b-AAA'AWWW'PPPN'NNNN
+#define LPC1768_PIN_(port, pin, pwm, adc)  0b0##adc##pwm##port##pin
+#define LPC1768_PIN(port, pin, pwm, adc)   LPC1768_PIN_(port, pin, pwm, adc)
 
 constexpr uint8_t LPC1768_PIN_PORT(const pin_t pin) { return ((uint8_t)((pin >> 5) & 0b111)); }
 constexpr uint8_t LPC1768_PIN_PIN(const pin_t pin) { return ((uint8_t)(pin & 0b11111)); }
-constexpr bool LPC1768_PIN_INTERRUPT(const pin_t pin) { return (((pin >> 8) & 0b1) != 0); }
-constexpr bool LPC1768_PIN_PWM(const pin_t pin) { return (((pin >> 9) & 0b1) != 0); }
-constexpr int8_t LPC1768_PIN_ADC(const pin_t pin) { return (int8_t)((pin >> 10) & 0b1111) - 1; }
+constexpr bool LPC1768_PIN_INTERRUPT(const pin_t pin) { return LPC1768_PIN_PORT(pin) == 0 || LPC1768_PIN_PORT(pin) == 2; }
+constexpr int8_t LPC1768_PIN_PWM(const pin_t pin) { return (int8_t)((pin >> 8) & 0b111); }
+constexpr int8_t LPC1768_PIN_ADC(const pin_t pin) { return (int8_t)((pin >> 11) & 0b1111) - 1; }
 
 // ******************
 // Runtime pinmapping
 // ******************
 #define P_NC -1
 
-#define P0_00 LPC1768_PIN(PORT(0), PIN( 0), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_01 LPC1768_PIN(PORT(0), PIN( 1), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_02 LPC1768_PIN(PORT(0), PIN( 2), INTERRUPT(1), PWM(0), ADC_CHAN(7))
-#define P0_03 LPC1768_PIN(PORT(0), PIN( 3), INTERRUPT(1), PWM(0), ADC_CHAN(6))
-#define P0_04 LPC1768_PIN(PORT(0), PIN( 4), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_05 LPC1768_PIN(PORT(0), PIN( 5), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_06 LPC1768_PIN(PORT(0), PIN( 6), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_07 LPC1768_PIN(PORT(0), PIN( 7), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_08 LPC1768_PIN(PORT(0), PIN( 8), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_09 LPC1768_PIN(PORT(0), PIN( 9), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_10 LPC1768_PIN(PORT(0), PIN(10), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_11 LPC1768_PIN(PORT(0), PIN(11), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_15 LPC1768_PIN(PORT(0), PIN(15), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_16 LPC1768_PIN(PORT(0), PIN(16), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_17 LPC1768_PIN(PORT(0), PIN(17), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_18 LPC1768_PIN(PORT(0), PIN(18), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_19 LPC1768_PIN(PORT(0), PIN(19), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_20 LPC1768_PIN(PORT(0), PIN(20), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_21 LPC1768_PIN(PORT(0), PIN(21), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_22 LPC1768_PIN(PORT(0), PIN(22), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_23 LPC1768_PIN(PORT(0), PIN(23), INTERRUPT(1), PWM(0), ADC_CHAN(0))
-#define P0_24 LPC1768_PIN(PORT(0), PIN(24), INTERRUPT(1), PWM(0), ADC_CHAN(1))
-#define P0_25 LPC1768_PIN(PORT(0), PIN(25), INTERRUPT(1), PWM(0), ADC_CHAN(2))
-#define P0_26 LPC1768_PIN(PORT(0), PIN(26), INTERRUPT(1), PWM(0), ADC_CHAN(3))
-#define P0_27 LPC1768_PIN(PORT(0), PIN(27), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_28 LPC1768_PIN(PORT(0), PIN(28), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_29 LPC1768_PIN(PORT(0), PIN(29), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P0_30 LPC1768_PIN(PORT(0), PIN(30), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P1_00 LPC1768_PIN(PORT(1), PIN( 0), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_01 LPC1768_PIN(PORT(1), PIN( 1), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_04 LPC1768_PIN(PORT(1), PIN( 4), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_08 LPC1768_PIN(PORT(1), PIN( 8), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_09 LPC1768_PIN(PORT(1), PIN( 9), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_10 LPC1768_PIN(PORT(1), PIN(10), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_14 LPC1768_PIN(PORT(1), PIN(14), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_15 LPC1768_PIN(PORT(1), PIN(15), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_16 LPC1768_PIN(PORT(1), PIN(16), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_17 LPC1768_PIN(PORT(1), PIN(17), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_18 LPC1768_PIN(PORT(1), PIN(18), INTERRUPT(0), PWM(1), ADC_NONE)
-#define P1_19 LPC1768_PIN(PORT(1), PIN(19), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_20 LPC1768_PIN(PORT(1), PIN(20), INTERRUPT(0), PWM(1), ADC_NONE)
-#define P1_21 LPC1768_PIN(PORT(1), PIN(21), INTERRUPT(0), PWM(1), ADC_NONE)
-#define P1_22 LPC1768_PIN(PORT(1), PIN(22), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_23 LPC1768_PIN(PORT(1), PIN(23), INTERRUPT(0), PWM(1), ADC_NONE)
-#define P1_24 LPC1768_PIN(PORT(1), PIN(24), INTERRUPT(0), PWM(1), ADC_NONE)
-#define P1_25 LPC1768_PIN(PORT(1), PIN(25), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_26 LPC1768_PIN(PORT(1), PIN(26), INTERRUPT(0), PWM(1), ADC_NONE)
-#define P1_27 LPC1768_PIN(PORT(1), PIN(27), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_28 LPC1768_PIN(PORT(1), PIN(28), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_29 LPC1768_PIN(PORT(1), PIN(29), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P1_30 LPC1768_PIN(PORT(1), PIN(30), INTERRUPT(0), PWM(0), ADC_CHAN(4))
-#define P1_31 LPC1768_PIN(PORT(1), PIN(31), INTERRUPT(0), PWM(0), ADC_CHAN(5))
-#define P2_00 LPC1768_PIN(PORT(2), PIN( 0), INTERRUPT(1), PWM(1), ADC_NONE)
-#define P2_01 LPC1768_PIN(PORT(2), PIN( 1), INTERRUPT(1), PWM(1), ADC_NONE)
-#define P2_02 LPC1768_PIN(PORT(2), PIN( 2), INTERRUPT(1), PWM(1), ADC_NONE)
-#define P2_03 LPC1768_PIN(PORT(2), PIN( 3), INTERRUPT(1), PWM(1), ADC_NONE)
-#define P2_04 LPC1768_PIN(PORT(2), PIN( 4), INTERRUPT(1), PWM(1), ADC_NONE)
-#define P2_05 LPC1768_PIN(PORT(2), PIN( 5), INTERRUPT(1), PWM(1), ADC_NONE)
-#define P2_06 LPC1768_PIN(PORT(2), PIN( 6), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P2_07 LPC1768_PIN(PORT(2), PIN( 7), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P2_08 LPC1768_PIN(PORT(2), PIN( 8), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P2_09 LPC1768_PIN(PORT(2), PIN( 9), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P2_10 LPC1768_PIN(PORT(2), PIN(10), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P2_11 LPC1768_PIN(PORT(2), PIN(11), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P2_12 LPC1768_PIN(PORT(2), PIN(12), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P2_13 LPC1768_PIN(PORT(2), PIN(13), INTERRUPT(1), PWM(0), ADC_NONE)
-#define P3_25 LPC1768_PIN(PORT(3), PIN(25), INTERRUPT(0), PWM(1), ADC_NONE)
-#define P3_26 LPC1768_PIN(PORT(3), PIN(26), INTERRUPT(0), PWM(1), ADC_NONE)
-#define P4_28 LPC1768_PIN(PORT(4), PIN(28), INTERRUPT(0), PWM(0), ADC_NONE)
-#define P4_29 LPC1768_PIN(PORT(4), PIN(29), INTERRUPT(0), PWM(0), ADC_NONE)
+#define P0_00 LPC1768_PIN(PORT(0), PIN( 0), PWM_NONE,    ADC_NONE)
+#define P0_01 LPC1768_PIN(PORT(0), PIN( 1), PWM_NONE,    ADC_NONE)
+#define P0_02 LPC1768_PIN(PORT(0), PIN( 2), PWM_NONE,    ADC_CHAN(7))
+#define P0_03 LPC1768_PIN(PORT(0), PIN( 3), PWM_NONE,    ADC_CHAN(6))
+#define P0_04 LPC1768_PIN(PORT(0), PIN( 4), PWM_NONE,    ADC_NONE)
+#define P0_05 LPC1768_PIN(PORT(0), PIN( 5), PWM_NONE,    ADC_NONE)
+#define P0_06 LPC1768_PIN(PORT(0), PIN( 6), PWM_NONE,    ADC_NONE)
+#define P0_07 LPC1768_PIN(PORT(0), PIN( 7), PWM_NONE,    ADC_NONE)
+#define P0_08 LPC1768_PIN(PORT(0), PIN( 8), PWM_NONE,    ADC_NONE)
+#define P0_09 LPC1768_PIN(PORT(0), PIN( 9), PWM_NONE,    ADC_NONE)
+#define P0_10 LPC1768_PIN(PORT(0), PIN(10), PWM_NONE,    ADC_NONE)
+#define P0_11 LPC1768_PIN(PORT(0), PIN(11), PWM_NONE,    ADC_NONE)
+#define P0_15 LPC1768_PIN(PORT(0), PIN(15), PWM_NONE,    ADC_NONE)
+#define P0_16 LPC1768_PIN(PORT(0), PIN(16), PWM_NONE,    ADC_NONE)
+#define P0_17 LPC1768_PIN(PORT(0), PIN(17), PWM_NONE,    ADC_NONE)
+#define P0_18 LPC1768_PIN(PORT(0), PIN(18), PWM_NONE,    ADC_NONE)
+#define P0_19 LPC1768_PIN(PORT(0), PIN(19), PWM_NONE,    ADC_NONE)
+#define P0_20 LPC1768_PIN(PORT(0), PIN(20), PWM_NONE,    ADC_NONE)
+#define P0_21 LPC1768_PIN(PORT(0), PIN(21), PWM_NONE,    ADC_NONE)
+#define P0_22 LPC1768_PIN(PORT(0), PIN(22), PWM_NONE,    ADC_NONE)
+#define P0_23 LPC1768_PIN(PORT(0), PIN(23), PWM_NONE,    ADC_CHAN(0))
+#define P0_24 LPC1768_PIN(PORT(0), PIN(24), PWM_NONE,    ADC_CHAN(1))
+#define P0_25 LPC1768_PIN(PORT(0), PIN(25), PWM_NONE,    ADC_CHAN(2))
+#define P0_26 LPC1768_PIN(PORT(0), PIN(26), PWM_NONE,    ADC_CHAN(3))
+#define P0_27 LPC1768_PIN(PORT(0), PIN(27), PWM_NONE,    ADC_NONE)
+#define P0_28 LPC1768_PIN(PORT(0), PIN(28), PWM_NONE,    ADC_NONE)
+#define P0_29 LPC1768_PIN(PORT(0), PIN(29), PWM_NONE,    ADC_NONE)
+#define P0_30 LPC1768_PIN(PORT(0), PIN(30), PWM_NONE,    ADC_NONE)
+#define P1_00 LPC1768_PIN(PORT(1), PIN( 0), PWM_NONE,    ADC_NONE)
+#define P1_01 LPC1768_PIN(PORT(1), PIN( 1), PWM_NONE,    ADC_NONE)
+#define P1_04 LPC1768_PIN(PORT(1), PIN( 4), PWM_NONE,    ADC_NONE)
+#define P1_08 LPC1768_PIN(PORT(1), PIN( 8), PWM_NONE,    ADC_NONE)
+#define P1_09 LPC1768_PIN(PORT(1), PIN( 9), PWM_NONE,    ADC_NONE)
+#define P1_10 LPC1768_PIN(PORT(1), PIN(10), PWM_NONE,    ADC_NONE)
+#define P1_14 LPC1768_PIN(PORT(1), PIN(14), PWM_NONE,    ADC_NONE)
+#define P1_15 LPC1768_PIN(PORT(1), PIN(15), PWM_NONE,    ADC_NONE)
+#define P1_16 LPC1768_PIN(PORT(1), PIN(16), PWM_NONE,    ADC_NONE)
+#define P1_17 LPC1768_PIN(PORT(1), PIN(17), PWM_NONE,    ADC_NONE)
+#define P1_18 LPC1768_PIN(PORT(1), PIN(18), PWM_CHAN(1), ADC_NONE)
+#define P1_19 LPC1768_PIN(PORT(1), PIN(19), PWM_NONE,    ADC_NONE)
+#define P1_20 LPC1768_PIN(PORT(1), PIN(20), PWM_CHAN(2), ADC_NONE)
+#define P1_21 LPC1768_PIN(PORT(1), PIN(21), PWM_CHAN(3), ADC_NONE)
+#define P1_22 LPC1768_PIN(PORT(1), PIN(22), PWM_NONE,    ADC_NONE)
+#define P1_23 LPC1768_PIN(PORT(1), PIN(23), PWM_CHAN(4), ADC_NONE)
+#define P1_24 LPC1768_PIN(PORT(1), PIN(24), PWM_CHAN(5), ADC_NONE)
+#define P1_25 LPC1768_PIN(PORT(1), PIN(25), PWM_NONE,    ADC_NONE)
+#define P1_26 LPC1768_PIN(PORT(1), PIN(26), PWM_CHAN(6), ADC_NONE)
+#define P1_27 LPC1768_PIN(PORT(1), PIN(27), PWM_NONE,    ADC_NONE)
+#define P1_28 LPC1768_PIN(PORT(1), PIN(28), PWM_NONE,    ADC_NONE)
+#define P1_29 LPC1768_PIN(PORT(1), PIN(29), PWM_NONE,    ADC_NONE)
+#define P1_30 LPC1768_PIN(PORT(1), PIN(30), PWM_NONE,    ADC_CHAN(4))
+#define P1_31 LPC1768_PIN(PORT(1), PIN(31), PWM_NONE,    ADC_CHAN(5))
+#define P2_00 LPC1768_PIN(PORT(2), PIN( 0), PWM_CHAN(1), ADC_NONE)
+#define P2_01 LPC1768_PIN(PORT(2), PIN( 1), PWM_CHAN(2), ADC_NONE)
+#define P2_02 LPC1768_PIN(PORT(2), PIN( 2), PWM_CHAN(3), ADC_NONE)
+#define P2_03 LPC1768_PIN(PORT(2), PIN( 3), PWM_CHAN(4), ADC_NONE)
+#define P2_04 LPC1768_PIN(PORT(2), PIN( 4), PWM_CHAN(5), ADC_NONE)
+#define P2_05 LPC1768_PIN(PORT(2), PIN( 5), PWM_CHAN(6), ADC_NONE)
+#define P2_06 LPC1768_PIN(PORT(2), PIN( 6), PWM_NONE,    ADC_NONE)
+#define P2_07 LPC1768_PIN(PORT(2), PIN( 7), PWM_NONE,    ADC_NONE)
+#define P2_08 LPC1768_PIN(PORT(2), PIN( 8), PWM_NONE,    ADC_NONE)
+#define P2_09 LPC1768_PIN(PORT(2), PIN( 9), PWM_NONE,    ADC_NONE)
+#define P2_10 LPC1768_PIN(PORT(2), PIN(10), PWM_NONE,    ADC_NONE)
+#define P2_11 LPC1768_PIN(PORT(2), PIN(11), PWM_NONE,    ADC_NONE)
+#define P2_12 LPC1768_PIN(PORT(2), PIN(12), PWM_NONE,    ADC_NONE)
+#define P2_13 LPC1768_PIN(PORT(2), PIN(13), PWM_NONE,    ADC_NONE)
+#define P3_25 LPC1768_PIN(PORT(3), PIN(25), PWM_CHAN(2), ADC_NONE)
+#define P3_26 LPC1768_PIN(PORT(3), PIN(26), PWM_CHAN(3), ADC_NONE)
+#define P4_28 LPC1768_PIN(PORT(4), PIN(28), PWM_NONE,    ADC_NONE)
+#define P4_29 LPC1768_PIN(PORT(4), PIN(29), PWM_NONE,    ADC_NONE)
 
 // Pin index for M43 and M226
 constexpr std::array<pin_t, 160> pin_map {
@@ -218,8 +220,6 @@ constexpr std::array<pin_t, 8> adc_pin_table {
 constexpr uint8_t NUM_DIGITAL_PINS = pin_map.size();
 constexpr uint8_t NUM_ANALOG_INPUTS = adc_pin_table.size();
 
-// P0.6 thru P0.9 are for the onboard SD card
-#define HAL_SENSITIVE_PINS P0_06, P0_07, P0_08, P0_09
 
 // Get the digital pin for an analog index
 constexpr pin_t analogInputToDigitalPin(const int8_t p) {
@@ -261,31 +261,50 @@ constexpr pin_t GET_PIN_MAP_PIN(const int16_t index) {
   return util::within(index, 0, NUM_DIGITAL_PINS - 1) ? pin_map[index] : P_NC;
 }
 
-bool useable_hardware_PWM(pin_t pin);
+constexpr uint32_t pin_feature_bits(const pin_t pin, const uint8_t feature) {
+  return feature << (LPC1768_PIN_PIN(pin) < 16 ? LPC1768_PIN_PIN(pin) : LPC1768_PIN_PIN(pin) - 16) * 2;
+}
 
-constexpr auto gpio_port(uint8_t port) {
+constexpr volatile auto& pin_feature_reg(const pin_t pin) {
+  return *util::memory_ptr<uint32_t>(LPC_PINCON_BASE + sizeof(uint32_t) * ((LPC1768_PIN_PORT(pin) * 2) + (LPC1768_PIN_PIN(pin) > 15)) );
+}
+
+__attribute__((always_inline)) inline void pin_enable_feature(const pin_t pin, uint8_t feature) {
+  util::bitset_clear(pin_feature_reg(pin), pin_feature_bits(pin, 0b11));
+  util::bitset_set(pin_feature_reg(pin), pin_feature_bits(pin, feature));
+}
+
+constexpr auto& gpio_port(uint8_t port) {
   constexpr std::size_t LPC_PORT_OFFSET = 0x0020;
-  return util::memory_ptr<LPC_GPIO_TypeDef>(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port);
+  return *util::memory_ptr<LPC_GPIO_TypeDef>(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port);
 }
 
 __attribute__((always_inline)) inline void gpio_set_input(const pin_t pin) {
-  util::bit_clear(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
+  util::bit_clear(gpio_port(LPC1768_PIN_PORT(pin)).FIODIR, LPC1768_PIN_PIN(pin));
 }
 
 __attribute__((always_inline)) inline void gpio_set_output(const pin_t pin) {
-  util::bit_set(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
+  util::bit_set(gpio_port(LPC1768_PIN_PORT(pin)).FIODIR, LPC1768_PIN_PIN(pin));
 }
 
 __attribute__((always_inline)) inline bool gpio_get_dir(const pin_t pin) {
-  return util::bit_test(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
+  return util::bit_test(gpio_port(LPC1768_PIN_PORT(pin)).FIODIR, LPC1768_PIN_PIN(pin));
 }
 
 __attribute__((always_inline)) inline void gpio_set(const pin_t pin) {
-  gpio_port(LPC1768_PIN_PORT(pin))->FIOSET = util::bit_value(LPC1768_PIN_PIN(pin));
+  gpio_port(LPC1768_PIN_PORT(pin)).FIOSET = util::bit_value(LPC1768_PIN_PIN(pin));
+}
+
+__attribute__((always_inline)) inline void gpio_set_port(const uint8_t port, const uint32_t pinmap) {
+  gpio_port(port).FIOSET = pinmap;
 }
 
 __attribute__((always_inline)) inline void gpio_clear(const pin_t pin) {
-  gpio_port(LPC1768_PIN_PORT(pin))->FIOCLR = util::bit_value(LPC1768_PIN_PIN(pin));
+  gpio_port(LPC1768_PIN_PORT(pin)).FIOCLR = util::bit_value(LPC1768_PIN_PIN(pin));
+}
+
+__attribute__((always_inline)) inline void gpio_clear_port(const uint8_t port, const uint32_t pinmap) {
+  gpio_port(port).FIOCLR = pinmap;
 }
 
 __attribute__((always_inline)) inline void gpio_set(const pin_t pin, const bool value) {
@@ -293,7 +312,11 @@ __attribute__((always_inline)) inline void gpio_set(const pin_t pin, const bool 
 }
 
 __attribute__((always_inline)) inline bool gpio_get(const pin_t pin) {
-  return util::bit_test(gpio_port(LPC1768_PIN_PORT(pin))->FIOPIN, LPC1768_PIN_PIN(pin));
+  return util::bit_test(gpio_port(LPC1768_PIN_PORT(pin)).FIOPIN, LPC1768_PIN_PIN(pin));
+}
+
+__attribute__((always_inline)) inline void gpio_toggle(const pin_t pin) {
+  gpio_set(pin, !gpio_get(pin));
 }
 
 #endif // _PINMAPPING_H_

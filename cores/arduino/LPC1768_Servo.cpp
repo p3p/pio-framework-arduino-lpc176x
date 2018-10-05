@@ -100,7 +100,7 @@ int8_t Servo::attach(const int pin, const int min, const int max) {
 
   servo_info[this->servoIndex].Pin.isActive = true;
 
-  LPC1768_PWM_attach_pin(servo_info[this->servoIndex].Pin.nbr, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
+  LPC1768_PWM_attach_pin(servo_info[this->servoIndex].Pin.nbr);//, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
   LPC1768_PWM_write(servo_info[this->servoIndex].Pin.nbr, 1500); // Servo idle position
 
   return this->servoIndex;
@@ -129,7 +129,7 @@ void Servo::writeMicroseconds(int value) {
     value = US_TO_PULSE_WIDTH(value);  // convert to pulse_width after compensating for interrupt overhead - 12 Aug 2009
 
     servo_info[channel].pulse_width = value;
-    LPC1768_PWM_attach_pin(servo_info[this->servoIndex].Pin.nbr, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
+    LPC1768_PWM_attach_pin(servo_info[this->servoIndex].Pin.nbr);//, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
     LPC1768_PWM_write(servo_info[this->servoIndex].Pin.nbr, value);
 
   }
