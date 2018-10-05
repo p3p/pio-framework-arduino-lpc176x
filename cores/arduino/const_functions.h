@@ -77,6 +77,26 @@ constexpr auto bit_clear(Value& val, const Bit bit) noexcept {
   return val &= ~bit_value(bit);
 }
 
+template<typename... Args>
+constexpr auto bitset_value(Args... args) noexcept {
+  return (... | bit_value(args));
+}
+
+template <typename Value, typename BitSet>
+constexpr auto bitset_set(Value& val, const BitSet bitset) noexcept {
+  return val |= bitset;
+}
+
+template <typename Value, typename BitSet>
+constexpr auto bitset_clear(Value& val, const BitSet bitset) noexcept {
+  return val &= ~bitset;
+}
+
+template <typename Value, typename BitSet>
+constexpr auto bitset_mask(Value& val, const BitSet bitset) noexcept {
+  return val & bitset;
+}
+
 template<typename T>
 constexpr auto memory_ptr(const std::size_t loc) {
   return reinterpret_cast<volatile T(*)>(loc);

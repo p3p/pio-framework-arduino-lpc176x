@@ -104,30 +104,17 @@ void digitalWrite(pin_t pin, uint8_t pin_status) {
 
 bool digitalRead(pin_t pin) {
   if (!VALID_PIN(pin)) return false;
-
   return gpio_get(pin);
 }
 
 void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255: HIGH
   if (!VALID_PIN(pin)) return;
 
-  #define MR0_MARGIN 200       // if channel value too close to MR0 the system locks up
-
-  //static bool out_of_PWM_slots = false;
-
-  uint32_t value = MAX(MIN(pwm_value, 255), 0);
-  if (value == 0 || value == 255) {  // treat as digital pin
-    LPC1768_PWM_detach_pin(pin);    // turn off PWM
-    digitalWrite(pin, value);
-  }
-  else {
-    if (LPC1768_PWM_attach_pin(pin, 1, LPC_PWM1->MR0, 0xFF))
-      LPC1768_PWM_write(pin, map(value, 0, 255, 1, LPC_PWM1->MR0));  // map 1-254 onto PWM range
-    else {                                                                 // out of PWM channels
-      //if (!out_of_PWM_slots) SERIAL_ECHOPGM(".\nWARNING - OUT OF PWM CHANNELS\n.\n");  //only warn once
-      //out_of_PWM_slots = true;
-      digitalWrite(pin, value);  // treat as a digital pin if out of channels
-    }
+  util::limit(pwm_value, 0, 255);
+  if (LPC1768_PWM_attach_pin(pin)) {
+    LPC1768_PWM_write(pin, map(pwm_value, 0, 255, 0, 20000));  // map 1-254 onto PWM range
+  } else {
+    digitalWrite(pin, pwm_value);  // treat as a digital pin if out of channels
   }
 }
 
@@ -168,8 +155,4 @@ int32_t random(int32_t min, int32_t max) {
 
 void randomSeed(uint32_t value) {
   srand(value);
-}
-
-int map(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) {
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
