@@ -23,7 +23,7 @@
 // 32bit bitset used to track whether a pin is activly using hardware pwm
 extern uint32_t active_pwm_pins;
 
-void pwm_init(const uint32_t prescale, const uint32_t period);
+void pwm_hardware_init(const uint32_t prescale, const uint32_t period);
 
 // return the bits to attach the PWM hardware depending on port using a lookup table
 constexpr int8_t pin_feature_pwm(const pin_t pin) {

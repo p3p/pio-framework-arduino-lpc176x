@@ -28,7 +28,7 @@
 
 #include <Arduino.h>
 #include <adc.h>
-#include "LPC1768_PWM.h"
+#include <pwm.h>
 
 extern uint64_t _millis;
 
@@ -111,8 +111,8 @@ void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255
   if (!VALID_PIN(pin)) return;
 
   util::limit(pwm_value, 0, 255);
-  if (LPC1768_PWM_attach_pin(pin)) {
-    LPC1768_PWM_write(pin, map(pwm_value, 0, 255, 0, 20000));  // map 1-254 onto PWM range
+  if (pwm_attach_pin(pin)) {
+    pwm_write(pin, map(pwm_value, 0, 255, 0, 20000));  // map 1-254 onto PWM range
   } else {
     digitalWrite(pin, pwm_value);  // treat as a digital pin if out of channels
   }

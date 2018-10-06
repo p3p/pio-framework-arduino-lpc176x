@@ -1,17 +1,29 @@
-#ifndef _HAL_PWM_H_
-#define _HAL_PWM_H_
+/**
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
-#define SBIT_CNTEN     0
-#define SBIT_PWMEN     2
-#define SBIT_PWMMR0R   1
+#ifndef _LPC1768_PWM_H_
+#define _LPC1768_PWM_H_
 
-#define PWM_1          0  //P2_00 (0-1 Bits of PINSEL4)
-#define PWM_2          2  //P2_01 (2-3 Bits of PINSEL4)
-#define PWM_3          4  //P2_02 (4-5 Bits of PINSEL4)
-#define PWM_4          6  //P2_03 (6-7 Bits of PINSEL4)
-#define PWM_5          8  //P2_04 (8-9 Bits of PINSEL4)
-#define PWM_6          10 //P2_05 (10-11 Bits of PINSEL4)
+#include <pinmapping.h>
 
-void HAL_pwm_init(void);
+void pwm_init(void);
+bool pwm_attach_pin(const pin_t pin);
+bool pwm_write(const pin_t pin, const uint32_t value);
+bool pwm_detach_pin(const pin_t pin);
+constexpr bool useable_hardware_pwm(const pin_t pin);
 
-#endif // _HAL_PWM_H_
+#endif // _LPC1768_PWM_H_
