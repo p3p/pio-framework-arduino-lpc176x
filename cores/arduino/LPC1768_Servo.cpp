@@ -63,7 +63,7 @@
 #include <algorithm>
 #include "Arduino.h"
 
-#include "LPC1768_PWM.h"
+#include <pwm.h>
 #include "LPC1768_Servo.h"
 
 ServoInfo_t servo_info[MAX_SERVOS];                  // static array of servo info structures
@@ -100,15 +100,15 @@ int8_t Servo::attach(const pin_t pin, const int min, const int max) {
 
   servo_info[this->servoIndex].Pin.isActive = true;
 
-  LPC1768_PWM_attach_pin(servo_info[this->servoIndex].Pin.nbr);//, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
-  LPC1768_PWM_write(servo_info[this->servoIndex].Pin.nbr, 1500); // Servo idle position
+  pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr);//, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
+  pwm_write(servo_info[this->servoIndex].Pin.nbr, 1500); // Servo idle position
 
   return this->servoIndex;
 }
 
 void Servo::detach() {
   servo_info[this->servoIndex].Pin.isActive = false;
-  LPC1768_PWM_detach_pin(servo_info[this->servoIndex].Pin.nbr);
+  pwm_detach_pin(servo_info[this->servoIndex].Pin.nbr);
 }
 
 void Servo::write(int value) {
@@ -129,9 +129,8 @@ void Servo::writeMicroseconds(int value) {
     value = US_TO_PULSE_WIDTH(value);  // convert to pulse_width after compensating for interrupt overhead - 12 Aug 2009
 
     servo_info[channel].pulse_width = value;
-    LPC1768_PWM_attach_pin(servo_info[this->servoIndex].Pin.nbr);//, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
-    LPC1768_PWM_write(servo_info[this->servoIndex].Pin.nbr, value);
-
+    pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr);//, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
+    pwm_write(servo_info[this->servoIndex].Pin.nbr, value);
   }
 }
 

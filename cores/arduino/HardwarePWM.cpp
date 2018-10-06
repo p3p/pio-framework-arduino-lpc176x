@@ -19,7 +19,7 @@
 
 uint32_t active_pwm_pins = 0;
 
-void pwm_init(const uint32_t prescale, const uint32_t period) {
+void pwm_hardware_init(const uint32_t prescale, const uint32_t period) {
   // Reset and set up timing
   LPC_PWM1->TCR  = util::bit_value(1);  // reset all counters
   LPC_PWM1->PR   = prescale;                  // set prescaler

@@ -1,21 +1,80 @@
-extern "C" {
-  #include <LPC17xx.h>
+/**
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+#include <array>
+#include <lpc17xx_pinsel.h>
+#include <lpc17xx_clkpwr.h>
+#include <HardwarePWM.h>
+#include <SoftwarePWM.h>
+#include <pwm.h>
+#include <Arduino.h>
+
+void pwm_init(void) {
+  const uint32_t PR = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / 1000000) - 1;      // Prescalar to create 1 MHz output
+  // Period defaulted to 20ms for compatibility with servos
+  pwm_hardware_init(PR, 20000);
+  SoftwarePWM.init(PR, 20000);
 }
-#include "const_functions.h"
-#include "pwm.h"
 
-void HAL_pwm_init(void) {
-  LPC_PINCON->PINSEL4 = _BV(PWM_5) | _BV(PWM_6);
+bool pwm_attach_pin(const pin_t pin) {
+  // Hardware PWM
+  if(pwm_pin_active(pin)) return true;                         // already attached to hardware channel?
+  if(LPC1768_PIN_PWM(pin) && !pwm_channel_active(pin)) {       // hardware capable and channel requried by pin not in use,
+    pin_enable_feature(pin, pin_feature_pwm(pin));             // attach Hardware PWM to pin
+    pwm_activate_channel(pin);                                 // activate the pwm channel for output on a pin
+    return true;
+  }
 
-  LPC_PWM1->TCR = _BV(SBIT_CNTEN) | _BV(SBIT_PWMEN);
-  LPC_PWM1->PR  =  0x0;               // No prescalar
-  LPC_PWM1->MCR = _BV(SBIT_PWMMR0R);  // Reset on PWMMR0, reset TC if it matches MR0
-  LPC_PWM1->MR0 = 255;                // set PWM cycle(Ton+Toff)=255)
-  LPC_PWM1->MR5 = 0;                  // Set 50% Duty Cycle for the channels
-  LPC_PWM1->MR6 = 0;
+  // Fall back on Timer3 based PWM
+  if(SoftwarePWM.exists(pin)) return true; // already attached on software pin
+  if(SoftwarePWM.update(pin, 0)) {
+    pin_enable_feature(pin, 0);            // initialise pin for gpio output
+    gpio_set_output(pin);
+    gpio_clear(pin);
+    return true;
+  }
 
-  // Trigger the latch Enable Bits to load the new Match Values MR0, MR5, MR6
-  LPC_PWM1->LER = _BV(0) | _BV(5) | _BV(6);
-  // Enable the PWM output pins for PWM_5-PWM_6(P2_04 - P2_05)
-  LPC_PWM1->PCR = _BV(13) | _BV(14);
+  return false;
+}
+
+bool pwm_detach_pin(const pin_t pin) {
+  // Hardware PWM capable pin and active
+  if (pwm_pin_active(pin)) {
+    pin_enable_feature(pin, 0); // reenable gpio
+    pwm_deactivate_channel(pin);
+    return true;
+  }
+
+  // Fall back on Timer3 based PWM
+  if(SoftwarePWM.remove(pin)) return true;
+
+  return false;
+}
+
+bool pwm_write(const pin_t pin, const uint32_t value) {
+  // Hardware pwm feature is active for pin
+  if (pwm_pin_active(pin)) {
+    pwm_set_match(pin, value);
+    return true;
+  }
+
+  // Fall back on Timer3 based PWM
+  if(SoftwarePWM.update(pin, value)) return true;
+  return false;
+}
+
+constexpr bool useable_hardware_pwm(const pin_t pin) {
+  return LPC1768_PIN_PWM(pin) && !pwm_channel_active(pin);
 }

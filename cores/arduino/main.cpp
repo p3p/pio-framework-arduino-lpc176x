@@ -5,7 +5,7 @@ extern "C" {
 }
 
 #include <pinmapping.h>
-#include "LPC1768_PWM.h"
+#include <pwm.h>
 
  __attribute__ ((weak)) void SysTick_Callback() {}
 
@@ -41,8 +41,8 @@ extern "C" {
 }
 
 int main(void) {
-  // initialise the PWM hardware
-  LPC1768_PWM_init();
+  // initialise PWM timers
+  pwm_init();
 
   setup();
   for (;;) loop();
