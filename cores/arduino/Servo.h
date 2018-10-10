@@ -1,10 +1,4 @@
 /**
- * Marlin 3D Printer Firmware
- * Copyright (C) 2017 MarlinFirmware [https://github.com/MarlinFirmware/Marlin]
- *
- * Based on Sprinter and grbl.
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
- *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -35,26 +29,21 @@
 #define LPC1768_SERVO_H
 
 #include <stdint.h>
-
 #include <pinmapping.h>
 
-// Macros
+#define Servo_VERSION           2     // software api version of this library
 //values in microseconds
-#define MIN_PULSE_WIDTH       500     // the shortest pulse sent to a servo
-#define MAX_PULSE_WIDTH      2500     // the longest pulse sent to a servo
+#define MIN_PULSE_WIDTH       544     // the shortest pulse sent to a servo
+#define MAX_PULSE_WIDTH      2400     // the longest pulse sent to a servo
 #define DEFAULT_PULSE_WIDTH  1500     // default pulse width when servo is attached
 #define REFRESH_INTERVAL    20000     // minimum time to refresh servos in microseconds
 
-#define MAX_SERVOS             8
-
+#define MAX_SERVOS              4     // Arbitrary limit, we have 6 hardware (on specific pins) and 20 software pwm channels in reality
 #define INVALID_SERVO         255     // flag indicating an invalid servo index
-
-
-// Types
 
 typedef struct {
   pin_t nbr;            // a pin number from 0 to 254 (255 signals invalid pin)
-  bool isActive;            // true if this channel is enabled, pin not pulsed if false
+  bool isActive;        // true if this channel is enabled, pin not pulsed if false
 } ServoPin_t;
 
 typedef struct {
@@ -62,16 +51,10 @@ typedef struct {
   unsigned int pulse_width;           // pulse width in microseconds
 } ServoInfo_t;
 
-// Global variables
-
-extern uint8_t ServoCount;
-extern ServoInfo_t servo_info[MAX_SERVOS];
-
-
 class Servo {
   public:
     Servo();
-    int8_t attach(const pin_t pin);            // attach the given pin to the next free channel, set pinMode, return channel number (-1 on fail)
+    int8_t attach(const pin_t pin);    // attach the given pin to the next free channel, set pinMode, return channel number (-1 on fail)
     int8_t attach(const pin_t pin, const int min, const int max); // as above but also sets min and max values for writes.
     void detach();
     void write(int value);             // if value is < 200 it is treated as an angle, otherwise as pulse width in microseconds
@@ -82,8 +65,8 @@ class Servo {
 
   protected:
     uint8_t servoIndex;               // index into the channel data for this servo
-    int min;
-    int max;
+    static ServoInfo_t servo_info[MAX_SERVOS]; // static array of servo info structures
+    static uint8_t ServoCount;             // the total number of attached servos
 };
 
 #endif // LPC1768_SERVO_H
