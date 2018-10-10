@@ -51,23 +51,14 @@
  *
  */
 
-/**
- * The only time that this library wants physical movement is when a WRITE
- * command is issued.  Before that all the attach & detach activity is solely
- * within the data base.
- *
- * The PWM output is inactive until the first WRITE.  After that it stays active
- * unless DEACTIVATE_SERVOS_AFTER_MOVE is enabled and a MOVE command was issued.
- */
-
 #include <algorithm>
 #include "Arduino.h"
 
 #include <pwm.h>
-#include "LPC1768_Servo.h"
+#include <Servo.h>
 
-ServoInfo_t servo_info[MAX_SERVOS];                  // static array of servo info structures
-uint8_t ServoCount = 0;                              // the total number of attached servos
+ServoInfo_t Servo::servo_info[MAX_SERVOS];                  // static array of servo info structures
+uint8_t Servo::ServoCount = 0;                              // the total number of attached servos
 
 #define US_TO_PULSE_WIDTH(p) p
 #define PULSE_WIDTH_TO_US(p) p
@@ -78,7 +69,7 @@ uint8_t ServoCount = 0;                              // the total number of atta
 Servo::Servo() {
   if (ServoCount < MAX_SERVOS) {
     this->servoIndex = ServoCount++;                    // assign a servo index to this instance
-    servo_info[this->servoIndex].pulse_width = US_TO_PULSE_WIDTH(DEFAULT_PULSE_WIDTH);   // store default values  - 12 Aug 2009
+    servo_info[this->servoIndex].pulse_width = US_TO_PULSE_WIDTH(DEFAULT_PULSE_WIDTH);   // store default values
   }
   else this->servoIndex = INVALID_SERVO;  // too many servos
 }
@@ -88,21 +79,10 @@ int8_t Servo::attach(const pin_t pin) {
 }
 
 int8_t Servo::attach(const pin_t pin, const int min, const int max) {
-
-  if (this->servoIndex >= MAX_SERVOS) return -1;
-
-  if (pin > 0) servo_info[this->servoIndex].Pin.nbr = pin;  // only assign a pin value if the pin info is
-                                                            // greater than zero. This way the init routine can
-                                                            // assign the pin and the MOVE command only needs the value.
-
-  this->min = MIN_PULSE_WIDTH; //resolution of min/max is 1 uS
-  this->max = MAX_PULSE_WIDTH;
-
+  if (this->servoIndex >= MAX_SERVOS || !pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr)) return -1;
+  servo_info[this->servoIndex].Pin.nbr = pin;
   servo_info[this->servoIndex].Pin.isActive = true;
-
-  pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr);//, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
-  pwm_write(servo_info[this->servoIndex].Pin.nbr, 1500); // Servo idle position
-
+  pwm_write(servo_info[this->servoIndex].Pin.nbr, DEFAULT_PULSE_WIDTH); // Servo idle position
   return this->servoIndex;
 }
 
@@ -115,7 +95,7 @@ void Servo::write(int value) {
   if (value < MIN_PULSE_WIDTH) { // treat values less than 544 as angles in degrees (valid values in microseconds are handled as microseconds)
     value = map(std::clamp(value, 0, 180), 0, 180, SERVO_MIN(), SERVO_MAX());
       // odd - this sets zero degrees to 544 and 180 degrees to 2400 microseconds but the literature says
-      //          zero degrees should be 500 microseconds and 180 should be 2500
+      // zero degrees should be 500 microseconds and 180 should be 2500
   }
   this->writeMicroseconds(value);
 }
@@ -129,7 +109,7 @@ void Servo::writeMicroseconds(int value) {
     value = US_TO_PULSE_WIDTH(value);  // convert to pulse_width after compensating for interrupt overhead - 12 Aug 2009
 
     servo_info[channel].pulse_width = value;
-    pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr);//, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, this->servoIndex);
+    pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr);
     pwm_write(servo_info[this->servoIndex].Pin.nbr, value);
   }
 }

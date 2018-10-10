@@ -49,6 +49,10 @@ bool pwm_attach_pin(const pin_t pin) {
   return false;
 }
 
+bool pwm_attached(const pin_t pin) {
+  return pwm_pin_active(pin) || SoftwarePWM.exists(pin);
+}
+
 bool pwm_detach_pin(const pin_t pin) {
   // Hardware PWM capable pin and active
   if (pwm_pin_active(pin)) {
