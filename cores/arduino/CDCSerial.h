@@ -78,7 +78,7 @@ private:
 
   static const uint32_t buffer_size = S;
   static const uint32_t buffer_mask = buffer_size - 1;
-  T buffer[buffer_size];
+  volatile T buffer[buffer_size];
   volatile uint32_t index_write;
   volatile uint32_t index_read;
 };
