@@ -21,7 +21,7 @@
 #include <pinmapping.h>
 
 void pwm_init(void);
-bool pwm_attach_pin(const pin_t pin);
+bool pwm_attach_pin(const pin_t pin, const uint32_t value = 0);
 bool pwm_write(const pin_t pin, const uint32_t value);
 bool pwm_detach_pin(const pin_t pin);
 constexpr bool useable_hardware_pwm(const pin_t pin);

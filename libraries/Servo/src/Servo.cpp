@@ -79,7 +79,7 @@ int8_t Servo::attach(const pin_t pin) {
 }
 
 int8_t Servo::attach(const pin_t pin, const int min, const int max) {
-  if (this->servoIndex >= MAX_SERVOS || !pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr)) return -1;
+  if (this->servoIndex >= MAX_SERVOS || !pwm_attach_pin(pin)) return -1;
   servo_info[this->servoIndex].Pin.nbr = pin;
   servo_info[this->servoIndex].Pin.isActive = true;
   pwm_write(servo_info[this->servoIndex].Pin.nbr, DEFAULT_PULSE_WIDTH); // Servo idle position

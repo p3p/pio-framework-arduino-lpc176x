@@ -28,24 +28,24 @@ void pwm_init(void) {
   SoftwarePWM.init(PR, 20000);
 }
 
-bool pwm_attach_pin(const pin_t pin) {
+bool pwm_attach_pin(const pin_t pin, const uint32_t value) {
   // Hardware PWM
   if(pwm_pin_active(pin)) return true;                         // already attached to hardware channel?
   if(LPC1768_PIN_PWM(pin) && !pwm_channel_active(pin)) {       // hardware capable and channel requried by pin not in use,
     pin_enable_feature(pin, pin_feature_pwm(pin));             // attach Hardware PWM to pin
+    pwm_set_match(pin, value);
     pwm_activate_channel(pin);                                 // activate the pwm channel for output on a pin
     return true;
   }
 
   // Fall back on Timer3 based PWM
   if(SoftwarePWM.exists(pin)) return true; // already attached on software pin
-  if(SoftwarePWM.update(pin, 0)) {
+  if(SoftwarePWM.update(pin, value)) {
     pin_enable_feature(pin, 0);            // initialise pin for gpio output
     gpio_set_output(pin);
     gpio_clear(pin);
     return true;
   }
-
   return false;
 }
 
