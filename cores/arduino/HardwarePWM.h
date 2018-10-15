@@ -55,6 +55,7 @@ constexpr bool pwm_pin_active(const pin_t pin) {
 
 __attribute__((always_inline)) inline void pwm_set_period(const uint32_t period) {
   LPC_PWM1->MR0  = period - 1;               // TC resets every period cycles
+  util::bit_set(LPC_PWM1->LER, 0);
 }
 
 // update the bitset an activate hardware pwm channel for output
