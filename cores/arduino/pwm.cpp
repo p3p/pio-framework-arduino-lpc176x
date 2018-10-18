@@ -78,7 +78,3 @@ bool pwm_write(const pin_t pin, const uint32_t value) {
   if(SoftwarePWM.update(pin, value)) return true;
   return false;
 }
-
-constexpr bool useable_hardware_pwm(const pin_t pin) {
-  return LPC1768_PIN_PWM(pin) && !pwm_channel_active(pin);
-}
