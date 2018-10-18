@@ -46,7 +46,7 @@ struct SoftwarePwmTable {
     }
   }
 
-  void init(const uint32_t prescale, const uint32_t period, const uint32_t int_priority = 1) {
+  void init(const uint32_t prescale, const uint32_t period, const uint32_t int_priority = 2) {
     // Setup timer for Timer3 Interrupt controlled PWM
     LPC_SC->PCONP |= 1 << 23;                 // power on timer3
     LPC_TIM3->PR = prescale;                  // match PWM hardware prescaler
