@@ -109,6 +109,7 @@ constexpr bool LPC1768_PIN_INTERRUPT(const pin_t pin) { return LPC1768_PIN_PORT(
 constexpr int8_t LPC1768_PIN_PWM(const pin_t pin) { return (int8_t)((pin >> 8) & 0b111); }
 constexpr int8_t LPC1768_PIN_ADC(const pin_t pin) { return (int8_t)((pin >> 11) & 0b1111) - 1; }
 
+#define LPC1768_PIN_INTERRUPT_M(pin) ((pin >> 0x5 & 0x7) == 0 || (pin >> 0x5 & 0x7) == 2)
 // ******************
 // Runtime pinmapping
 // ******************
