@@ -30,6 +30,7 @@
 #include <usb/usbhw.h>
 #include <usb/usbreg.h>
 #include <usb/cdcuser.h>
+#include <Arduino.h>
 /**
  * Generic RingBuffer
  * T type of the buffer array
@@ -110,7 +111,8 @@ public:
 
   size_t write(const uint8_t c) {
     if (!host_connected) return 0;          // Do not fill buffer when host disconnected
-    while (transmit_buffer.write(c) == 0) { // Block until there is free room in buffer
+    const uint32_t usb_tx_timeout = millis() + 2;
+    while (transmit_buffer.write(c) == 0 && util::pending(millis(), usb_tx_timeout)) { // Block until there is free room in buffer
       if (!host_connected) return 0;        // Break infinite loop on host disconect
       CDC_FlushBuffer();
     }
@@ -131,7 +133,8 @@ public:
   }
 
   void flushTX(void) {
-    while (transmit_buffer.available() && host_connected) { /* nada */}
+    const uint32_t usb_tx_timeout = millis() + 2;
+    while (transmit_buffer.available() && host_connected && util::pending(millis(), usb_tx_timeout)) { /* nada */}
   }
 
   size_t printf(const char *format, ...) {
@@ -142,12 +145,15 @@ public:
     va_end(vArgs);
     size_t i = 0;
     if (length > 0 && length < 256) {
-      while (i < (size_t)length && host_connected) {
+      uint32_t usb_tx_timeout = millis() + 2;
+      while (i < (size_t)length && host_connected && util::pending(millis(), usb_tx_timeout)) {
         size_t cnt = transmit_buffer.write(buffer[i]);
-        if (cnt == 0)
+        if (cnt == 0) {
           CDC_FlushBuffer();
-        else
+        } else {
           i += cnt;
+          usb_tx_timeout = millis() + 2;
+        }
       }
       if (i > 0)
         CDC_FlushBuffer();
