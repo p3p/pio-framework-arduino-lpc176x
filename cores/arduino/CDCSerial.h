@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <Stream.h>
 #include <usb/usb.h>
+#include <usb/usbcfg.h>
 #include <usb/usbhw.h>
 #include <usb/usbreg.h>
 #include <usb/cdcuser.h>
@@ -47,7 +48,7 @@ public:
   RingBuffer() {index_read = index_write = 0;}
 
   uint32_t available() {return mask(index_write - index_read);}
-  uint32_t free() {return buffer_size - available();}
+  uint32_t free() {return buffer_size - available() - 1;}
   bool empty() {return index_read == index_write;}
   bool full() {return next(index_write) == index_read;}
   void clear() {index_read = index_write = 0;}
@@ -111,7 +112,12 @@ public:
 
   int16_t read() {
     uint8_t value;
-    return receive_buffer.read(&value) ? value : -1;
+    if (receive_buffer.read(&value)) {
+      CDC_FillBuffer(receive_buffer.free());
+      return value;
+    }
+    else
+      return -1;
   }
 
   size_t write(const uint8_t c) {

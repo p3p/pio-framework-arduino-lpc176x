@@ -18,11 +18,11 @@
 
 #ifndef __CDCUSER_H__
 #define __CDCUSER_H__
-
+extern "C" {
+#include <debug_frmwrk.h>
+}
 /* CDC buffer handling */
-extern uint32_t CDC_RdOutBuf(char *buffer, const uint32_t *length);
-extern uint32_t CDC_WrOutBuf(const char *buffer, uint32_t *length);
-extern uint32_t CDC_OutBufAvailChar(uint32_t *availChar);
+extern void CDC_WrOutBuf();
 
 /* CDC Data In/Out Endpoint Address */
 #define CDC_DEP_IN       0x82
@@ -58,4 +58,16 @@ extern void CDC_Reset();
 /* CDC prepare the SERAIAL_STATE */
 extern unsigned short CDC_GetSerialState(void);
 
+__inline void CDC_FlushBuffer() {
+ 
+  USB_SetInterruptEP(CDC_DEP_IN);
+}
+
+extern volatile uint32_t CDC_OutAvailable;
+
+__inline void CDC_FillBuffer(uint32_t available) {
+  if (CDC_OutAvailable && available >= CDC_OutAvailable) {
+    CDC_WrOutBuf();
+  }
+}
 #endif  /* __CDCUSER_H__ */

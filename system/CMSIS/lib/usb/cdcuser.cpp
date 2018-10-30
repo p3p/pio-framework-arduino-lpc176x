@@ -30,6 +30,7 @@ extern "C" {
 #include <usb/cdcuser.h>
 
 #include <CDCSerial.h>
+#include <debug_frmwrk.h>
 
 unsigned char BulkBufIn[USB_CDC_BUFSIZE];            // Buffer to store USB IN  packet
 unsigned char BulkBufOut[USB_CDC_BUFSIZE];            // Buffer to store USB OUT packet
@@ -38,6 +39,9 @@ unsigned char NotificationBuf[10];
 CDC_LINE_CODING CDC_LineCoding = { 921600, 0, 0, 8 };
 unsigned short CDC_LineState = 0;
 unsigned short CDC_SerialState = 0;
+volatile bool CDC_OutPending = false;
+volatile uint32_t CDC_OutAvailable = 0;
+uint32_t CDC_OutOffset = 0;
 
 extern CDCSerial UsbSerial;
 
@@ -48,26 +52,27 @@ __attribute__((weak)) bool CDC_RecvCallback(const char byte) {
 /*----------------------------------------------------------------------------
  write data to CDC_OutBuf
  *---------------------------------------------------------------------------*/
-uint32_t CDC_WrOutBuf(const char *buffer, uint32_t *length) {
-  uint32_t bytesToWrite = *length;
+void CDC_WrOutBuf() {
+  uint8_t *buffer = &BulkBufOut[CDC_OutOffset];
+  uint32_t bytesToWrite = UsbSerial.receive_buffer.free();
 
-  while (bytesToWrite && UsbSerial.receive_buffer.free()) {
+  if (bytesToWrite > CDC_OutAvailable)
+    bytesToWrite = CDC_OutAvailable;
+  
+  uint32_t cnt = bytesToWrite;
+
+  while (cnt--) {
     if(CDC_RecvCallback(*buffer)) {
       UsbSerial.receive_buffer.write(*buffer++);           // Copy Data to buffer
     }
-    bytesToWrite--;
   }
-
-  return (*length - bytesToWrite);
+  CDC_OutOffset += bytesToWrite;
+  CDC_OutAvailable -= bytesToWrite;
+  if (CDC_OutPending) {
+    USB_SetInterruptEP(CDC_DEP_OUT);
+  }
 }
 
-/*----------------------------------------------------------------------------
- check if character(s) are available at CDC_OutBuf
- *---------------------------------------------------------------------------*/
-uint32_t CDC_OutBufAvailChar(uint32_t *availChar) {
-  *availChar = UsbSerial.transmit_buffer.available();
-  return (0);
-}
 /* end Buffer handling */
 
 /*----------------------------------------------------------------------------
@@ -79,6 +84,9 @@ uint32_t CDC_OutBufAvailChar(uint32_t *availChar) {
 void CDC_Init() {
   CDC_LineState = 0;
   CDC_SerialState = 0;
+  CDC_OutPending = false;
+  CDC_OutAvailable = 0;
+  CDC_OutOffset = 0;
   UsbSerial.host_connected = false;
 }
 
@@ -112,6 +120,9 @@ void CDC_Resume() {
 void CDC_Reset() {
   // USB reset, any packets in transit may have been flushed
   UsbSerial.host_connected = (CDC_LineState & CDC_DTE_PRESENT) != 0 ? true : false;
+  CDC_OutPending = false;
+  CDC_OutAvailable = 0;
+  CDC_OutOffset = 0;
 }
 
 /*----------------------------------------------------------------------------
@@ -258,8 +269,14 @@ void CDC_BulkIn(void) {
  Return Value: none
  *---------------------------------------------------------------------------*/
 void CDC_BulkOut(void) {
-  uint32_t numBytesRead = USB_ReadEP(CDC_DEP_OUT, &BulkBufOut[0]);
-  CDC_WrOutBuf((char *) &BulkBufOut[0], &numBytesRead);
+  if (CDC_OutAvailable == 0) {
+    CDC_OutOffset = 0;
+    CDC_OutPending = false;
+    CDC_OutAvailable = USB_ReadEP(CDC_DEP_OUT, &BulkBufOut[0]);
+    CDC_WrOutBuf();
+  }
+  else
+    CDC_OutPending = true;
 }
 
 /*----------------------------------------------------------------------------
