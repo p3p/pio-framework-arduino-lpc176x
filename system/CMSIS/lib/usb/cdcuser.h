@@ -45,6 +45,7 @@ extern uint32_t CDC_SendBreak(unsigned short wDurationOfBreak);
 /* CDC Bulk Callback Functions */
 extern void CDC_BulkIn(void);
 extern void CDC_BulkOut(void);
+extern void CDC_DMA (uint32_t event);
 
 /* CDC Notification Callback Function */
 extern void CDC_NotificationIn(void);
@@ -60,7 +61,7 @@ extern unsigned short CDC_GetSerialState(void);
 
 __inline void CDC_FlushBuffer() {
  
-  USB_SetInterruptEP(CDC_DEP_IN);
+  USB_DMA_Enable(CDC_DEP_IN);
 }
 
 extern volatile uint32_t CDC_OutAvailable;

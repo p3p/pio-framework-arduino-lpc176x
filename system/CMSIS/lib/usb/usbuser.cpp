@@ -215,6 +215,14 @@ void USB_EndPoint2 (uint32_t event) {
     case USB_EVT_IN:
       CDC_BulkIn ();                 /* data expected from Host */
       break;
+    case USB_EVT_OUT_DMA_EOT:
+    case USB_EVT_IN_DMA_EOT:
+    case USB_EVT_OUT_DMA_NDR:
+    case USB_EVT_IN_DMA_NDR:
+    case USB_EVT_OUT_DMA_ERR:
+    case USB_EVT_IN_DMA_ERR:
+      CDC_DMA(event);
+      break;
   }
 }
 

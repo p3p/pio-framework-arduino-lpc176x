@@ -27,6 +27,7 @@ extern "C" {
 #include <usb/usbcfg.h>
 #include <usb/usbhw.h>
 #include <usb/usbcore.h>
+#include <usb/usbuser.h>
 #include <usb/cdcuser.h>
 
 #include <CDCSerial.h>
@@ -39,7 +40,6 @@ unsigned char NotificationBuf[10];
 CDC_LINE_CODING CDC_LineCoding = { 921600, 0, 0, 8 };
 unsigned short CDC_LineState = 0;
 unsigned short CDC_SerialState = 0;
-volatile bool CDC_OutPending = false;
 volatile uint32_t CDC_OutAvailable = 0;
 uint32_t CDC_OutOffset = 0;
 
@@ -48,6 +48,18 @@ extern CDCSerial UsbSerial;
 __attribute__((weak)) bool CDC_RecvCallback(const char byte) {
   return true;
 }
+
+static void CDC_QueueDMAIO(uint32_t EPNum, uint8_t *pData, uint32_t cnt) {
+  //_DBG("DMA IO "); _DBD32((uint32_t) pData); _DBG(" "); _DBD32(cnt); _DBG("\n");
+  USB_DMA_DESCRIPTOR desc;
+  desc.BufAdr = (uint32_t) pData;
+  desc.BufLen = cnt;
+  desc.MaxSize = (cnt > 0 ? USB_CDC_BUFSIZE : 0);
+  desc.InfoAdr = 0;
+  desc.Cfg.Val = 0;
+  USB_DMA_Setup(EPNum, &desc);
+}
+
 
 /*----------------------------------------------------------------------------
  write data to CDC_OutBuf
@@ -68,8 +80,8 @@ void CDC_WrOutBuf() {
   }
   CDC_OutOffset += bytesToWrite;
   CDC_OutAvailable -= bytesToWrite;
-  if (CDC_OutPending) {
-    USB_SetInterruptEP(CDC_DEP_OUT);
+  if (CDC_OutAvailable == 0) {
+    USB_DMA_Enable(CDC_DEP_OUT);
   }
 }
 
@@ -84,7 +96,6 @@ void CDC_WrOutBuf() {
 void CDC_Init() {
   CDC_LineState = 0;
   CDC_SerialState = 0;
-  CDC_OutPending = false;
   CDC_OutAvailable = 0;
   CDC_OutOffset = 0;
   UsbSerial.host_connected = false;
@@ -120,9 +131,9 @@ void CDC_Resume() {
 void CDC_Reset() {
   // USB reset, any packets in transit may have been flushed
   UsbSerial.host_connected = (CDC_LineState & CDC_DTE_PRESENT) != 0 ? true : false;
-  CDC_OutPending = false;
   CDC_OutAvailable = 0;
   CDC_OutOffset = 0;
+  USB_DMA_Enable(CDC_DEP_OUT);
 }
 
 /*----------------------------------------------------------------------------
@@ -252,14 +263,13 @@ uint32_t CDC_SendBreak(unsigned short wDurationOfBreak) {
  *---------------------------------------------------------------------------*/
 void CDC_BulkIn(void) {
   uint32_t numBytesAvail = UsbSerial.transmit_buffer.available();
-  uint32_t epStat = USB_ReadStatusEP(CDC_DEP_IN);
 
-  if (numBytesAvail > 0 && (epStat & EP_SEL_F) == 0) {
+  if (numBytesAvail > 0) {
     numBytesAvail = numBytesAvail > (USB_CDC_BUFSIZE - 1) ? (USB_CDC_BUFSIZE - 1) : numBytesAvail;
     for(uint32_t i = 0; i < numBytesAvail; ++i) {
       UsbSerial.transmit_buffer.read(&BulkBufIn[i]);
     }
-    USB_WriteEP(CDC_DEP_IN, &BulkBufIn[0], numBytesAvail);
+    CDC_QueueDMAIO(CDC_DEP_IN, &BulkBufIn[0], numBytesAvail);
   }
 }
 
@@ -269,14 +279,9 @@ void CDC_BulkIn(void) {
  Return Value: none
  *---------------------------------------------------------------------------*/
 void CDC_BulkOut(void) {
-  if (CDC_OutAvailable == 0) {
-    CDC_OutOffset = 0;
-    CDC_OutPending = false;
-    CDC_OutAvailable = USB_ReadEP(CDC_DEP_OUT, &BulkBufOut[0]);
-    CDC_WrOutBuf();
-  }
-  else
-    CDC_OutPending = true;
+  CDC_OutOffset = 0;
+  CDC_OutAvailable = USB_DMA_BufCnt(CDC_DEP_OUT);
+  CDC_WrOutBuf();
 }
 
 /*----------------------------------------------------------------------------
@@ -307,4 +312,29 @@ void CDC_NotificationIn(void) {
   NotificationBuf[9] = (CDC_SerialState >> 8) & 0xFF;
 
   USB_WriteEP(CDC_CEP_IN, &NotificationBuf[0], 10);     // send notification
+}
+
+void CDC_DMA (uint32_t event) {
+  //_DBG("DMA event "); _DBD32(event); _DBG(" "); _DBD32(USB_DMA_Status(MSC_EP_IN)); _DBG("\n");
+
+  switch(event) {
+    case USB_EVT_IN_DMA_EOT:
+      break;
+    case USB_EVT_IN_DMA_NDR:
+      CDC_BulkIn();
+      break;
+    case USB_EVT_IN_DMA_ERR:
+      _DBG("Error in "); _DBD32(USB_DMA_Status(CDC_DEP_IN)); _DBG("\n");
+      break;
+    case USB_EVT_OUT_DMA_EOT:
+      CDC_BulkOut();
+      break;
+    case USB_EVT_OUT_DMA_NDR:
+      if (CDC_OutAvailable == 0)
+        CDC_QueueDMAIO(CDC_DEP_OUT, &BulkBufOut[0], USB_CDC_BUFSIZE);
+      break;
+    case USB_EVT_OUT_DMA_ERR:
+      _DBG("Error out "); _DBD32(USB_DMA_Status(CDC_DEP_OUT)); _DBG("\n");
+      break;
+  }
 }
