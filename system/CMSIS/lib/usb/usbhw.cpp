@@ -489,7 +489,7 @@ const uint32_t DDSz [2] = { 16,          20         };
  *                     pDD: Pointer to DMA Descriptor
  *    Return Value:    TRUE - Success, FALSE - Error
  */
-
+#ifdef XXXXX
 uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD) {
   uint32_t num, nxt, iso, n, active;
   uint32_t current;
@@ -544,10 +544,57 @@ uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD) {
     last_ptr[0]  = nxt;           /* Link in new Descriptor */
     last_ptr[1] |= 0x00000004;    /* Next DD is Valid */
     udca[num] = active;
+    //_DBG("Link\n");
   } else {
     udca[num] = nxt;                        /* Save new Descriptor */
     UDCA[num] = nxt;                        /* Update UDCA in USB */
   }
+  USB_DMA_Enable(EPNum);
+  return (TRUE); /* Success */
+}
+#endif
+uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD) {
+  uint32_t num, nxt, iso, n, active;
+  uint32_t * nxt_ptr;
+
+  iso = pDD->Cfg.Type.IsoEP;                /* Iso or Non-Iso Descriptor */
+  num = EPAdr(EPNum);                       /* Endpoint's Physical Address */
+
+  for (n = 0; n < 32; n++) {                /* Search for available Memory */
+    if ((DDMemMap[iso] & (1 << n)) == 0) {
+      break;                                /* Memory found */
+    }
+  }
+  if (n == 32) {
+    _DBG("No descriptors available\n");
+    return (FALSE);              /* Memory not available */
+  }
+  DDMemMap[iso] |= 1 << n;                  /* Mark Memory Usage */
+  nxt = DDAdr[iso] + n * DDSz[iso];         /* Next Descriptor */
+
+  active = udca[num];                          /* Initial Descriptor */
+  // move through list freeing all descriptors that have been processed
+  while (active) {                             /* Go through Descriptor List */
+    uint32_t *active_ptr = (uint32_t *)active;
+    n = (active - DDAdr[iso]) / DDSz[iso];   /* Descriptor Index */
+    DDMemMap[iso] &= ~(1 << n);           /* Unmark Memory Usage */
+    active = *active_ptr;                  /* Next Descriptor */
+  }
+
+  nxt_ptr = (uint32_t *)nxt;
+  /* Fill in DMA Descriptor */
+  *nxt_ptr++ =  0;   /* Next DD Pointer */
+  *nxt_ptr++ = (pDD->Cfg.Type.ATLE) |
+               (pDD->Cfg.Type.IsoEP << 4) |
+               (pDD->MaxSize <<  5) |
+               (pDD->BufLen  << 16);
+  *nxt_ptr++ =  pDD->BufAdr;
+  *nxt_ptr++ =  pDD->Cfg.Type.LenPos << 8;
+  if (iso) {
+    *nxt_ptr =  pDD->InfoAdr;
+  }
+  udca[num] = nxt;                        /* Save new Descriptor */
+  UDCA[num] = nxt;                        /* Update UDCA in USB */
   USB_DMA_Enable(EPNum);
   return (TRUE); /* Success */
 }

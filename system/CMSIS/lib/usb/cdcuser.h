@@ -59,16 +59,16 @@ extern void CDC_Reset();
 /* CDC prepare the SERAIAL_STATE */
 extern unsigned short CDC_GetSerialState(void);
 
+extern volatile bool InActive;
 __inline void CDC_FlushBuffer() {
- 
-  USB_DMA_Enable(CDC_DEP_IN);
+  if (!InActive)
+    USB_DMA_Enable(CDC_DEP_IN);
 }
 
-extern volatile uint32_t CDC_OutAvailable;
-
+extern volatile bool OutActive;
 __inline void CDC_FillBuffer(uint32_t available) {
-  if (CDC_OutAvailable && available >= CDC_OutAvailable) {
-    CDC_WrOutBuf();
+  if (!OutActive && available >= USB_CDC_BUFSIZE) {
+    USB_DMA_Enable(CDC_DEP_OUT);
   }
 }
 #endif  /* __CDCUSER_H__ */

@@ -127,8 +127,7 @@ public:
       if (!host_connected) return 0;        // Break infinite loop on host disconect
       CDC_FlushBuffer();
     }
-    if (transmit_buffer.available() == 1)
-      CDC_FlushBuffer();
+    CDC_FlushBuffer();
     return 1;
   }
 
@@ -138,6 +137,7 @@ public:
 
   void flush() {
     receive_buffer.clear();
+    CDC_FillBuffer(receive_buffer.free());
   }
 
   uint8_t availableForWrite(void) {
@@ -146,7 +146,9 @@ public:
 
   void flushTX(void) {
     const uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
-    while (transmit_buffer.available() && host_connected && util::pending(millis(), usb_tx_timeout)) { /* nada */}
+    while (transmit_buffer.available() && host_connected && util::pending(millis(), usb_tx_timeout)) {
+      CDC_FlushBuffer();
+    }
   }
 
   size_t printf(const char *format, ...) {
@@ -160,6 +162,7 @@ public:
       uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
       while (i < (size_t)length && host_connected && util::pending(millis(), usb_tx_timeout)) {
         i += transmit_buffer.write(buffer[i]);
+        CDC_FlushBuffer();
       }
     }
     return i;
