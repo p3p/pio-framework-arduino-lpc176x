@@ -814,6 +814,7 @@ intCnt++;
 
   if (LPC_USB->USBDMAIntSt & 0x00000001) {          /* End of Transfer Interrupt */
     val = LPC_USB->USBEoTIntSt;
+    LPC_USB->USBEoTIntClr = val;
     for (n = 2; n < USB_EP_NUM; n++) {      /* Check All Endpoints */
       if (val & (1 << n)) {
         m = n >> 1;
@@ -828,7 +829,7 @@ intCnt++;
         }
       }
     }
-    LPC_USB->USBEoTIntClr = val;
+    //LPC_USB->USBEoTIntClr = val;
   }
 
   if (LPC_USB->USBDMAIntSt & 0x00000002) {          /* New DD Request Interrupt */
@@ -853,6 +854,7 @@ intCnt++;
 
   if (LPC_USB->USBDMAIntSt & 0x00000004) {          /* System Error Interrupt */
     val = LPC_USB->USBSysErrIntSt;
+    LPC_USB->USBSysErrIntClr = val;
     for (n = 2; n < USB_EP_NUM; n++) {      /* Check All Endpoints */
       if (val & (1 << n)) {
         m = n >> 1;
@@ -867,7 +869,7 @@ intCnt++;
         }
       }
     }
-    LPC_USB->USBSysErrIntClr = val;
+    //LPC_USB->USBSysErrIntClr = val;
   }
 
 #endif /* USB_DMA */

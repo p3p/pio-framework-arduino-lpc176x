@@ -112,12 +112,9 @@ public:
 
   int16_t read() {
     uint8_t value;
-    if (receive_buffer.read(&value)) {
-      CDC_FillBuffer(receive_buffer.free());
-      return value;
-    }
-    else
-      return -1;
+    uint32_t ret = receive_buffer.read(&value);
+    CDC_FillBuffer(receive_buffer.free());
+    return (ret ? value : -1);
   }
 
   size_t write(const uint8_t c) {

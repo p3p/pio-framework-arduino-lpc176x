@@ -21,8 +21,6 @@
 extern "C" {
 #include <debug_frmwrk.h>
 }
-/* CDC buffer handling */
-extern void CDC_WrOutBuf();
 
 /* CDC Data In/Out Endpoint Address */
 #define CDC_DEP_IN       0x82
@@ -59,16 +57,22 @@ extern void CDC_Reset();
 /* CDC prepare the SERAIAL_STATE */
 extern unsigned short CDC_GetSerialState(void);
 
-extern volatile bool InActive;
+extern volatile bool CDC_InActive;
 __inline void CDC_FlushBuffer() {
-  if (!InActive)
+  if (!CDC_InActive)
     USB_DMA_Enable(CDC_DEP_IN);
 }
 
-extern volatile bool OutActive;
+extern void USB_Validate();
+extern volatile bool CDC_OutActive;
+extern volatile uint32_t CDC_OutAvailable;
+extern void CDC_WrOutBuf();
 __inline void CDC_FillBuffer(uint32_t available) {
-  if (!OutActive && available >= USB_CDC_BUFSIZE) {
+  if (!CDC_OutActive && available >= CDC_OutAvailable) {
+    CDC_WrOutBuf();
+    CDC_OutActive = true;
     USB_DMA_Enable(CDC_DEP_OUT);
   }
+  //USB_Validate();
 }
 #endif  /* __CDCUSER_H__ */
