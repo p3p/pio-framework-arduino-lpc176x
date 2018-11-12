@@ -37,10 +37,10 @@ extern "C" {
 #define EP_MSK_ISO  0x1248      /* Isochronous Endpoint Logical Address Mask */
 
 #if USB_DMA
-//uint32_t UDCA[USB_EP_NUM] __attribute__((section("USB_RAM")));        /* UDCA in USB RAM */
-uint32_t volatile *UDCA = (uint32_t *)USB_RAM_ADR;
-uint32_t DD_NISO_Mem[4*DD_NISO_CNT] __attribute__((section("USB_RAM")));    /* Non-Iso DMA Descriptor Memory */
-uint32_t DD_ISO_Mem [5*DD_ISO_CNT] __attribute__((section("USB_RAM")));     /* Iso DMA Descriptor Memory */
+uint32_t volatile UDCA[USB_EP_NUM] __attribute__((section("AHBSRAM0"), aligned(128))) = {0};        /* UDCA in USB RAM */
+//uint32_t volatile *UDCA = (uint32_t *)USB_RAM_ADR;
+uint32_t DD_NISO_Mem[4*DD_NISO_CNT] __attribute__((section("AHBSRAM0"))) = {0};    /* Non-Iso DMA Descriptor Memory */
+uint32_t DD_ISO_Mem [5*DD_ISO_CNT] __attribute__((section("AHBSRAM0"))) = {0};     /* Iso DMA Descriptor Memory */
 uint32_t udca[USB_EP_NUM];                                    /* UDCA saved values */
 uint32_t DDMemMap[2];
 #endif
@@ -201,7 +201,7 @@ void USB_Reset (void) {
   WrCmdDat(CMD_SET_MODE, DAT_WR_BYTE(INAK_BI));
 
 #if USB_DMA
-  LPC_USB->USBUDCAH   = USB_RAM_ADR;
+  LPC_USB->USBUDCAH   = (uint32_t)&UDCA[0];
   LPC_USB->USBDMARClr = 0xFFFFFFFF;
   LPC_USB->USBEpDMADis  = 0xFFFFFFFF;
   LPC_USB->USBEpDMAEn   = USB_DMA_EP;
@@ -215,6 +215,8 @@ void USB_Reset (void) {
     udca[n] = 0;
     UDCA[n] = 0;
   }
+  _DBG("UDCA address "); _DBD32((int)&UDCA[0]); _DBG("\n");
+  _DBG("DD_NISO_Mem address "); _DBD32((int)&DD_NISO_Mem[0]); _DBG("\n");
 #endif
 }
 
@@ -479,7 +481,7 @@ void USB_SetInterruptEP(uint32_t EPNum)
 #if USB_DMA
 
 /* DMA Descriptor Memory Layout */
-const uint32_t DDAdr[2] = { DD_NISO_ADR, DD_ISO_ADR };
+const uint32_t DDAdr[2] = { (uint32_t)DD_NISO_Mem, (uint32_t)DD_ISO_Mem };
 const uint32_t DDSz [2] = { 16,          20         };
 
 

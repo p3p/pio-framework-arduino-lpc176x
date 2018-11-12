@@ -33,8 +33,8 @@ extern "C" {
 #include <CDCSerial.h>
 #include <debug_frmwrk.h>
 
-unsigned char BulkBufIn[USB_CDC_BUFSIZE];            // Buffer to store USB IN  packet
-unsigned char BulkBufOut[USB_CDC_BUFSIZE];            // Buffer to store USB OUT packet
+unsigned char BulkBufIn[USB_CDC_BUFSIZE] __attribute__((section("AHBSRAM0"), aligned(4))) = {0};
+unsigned char BulkBufOut[USB_CDC_BUFSIZE] __attribute__((section("AHBSRAM0"), aligned(4))) = {0};
 unsigned char NotificationBuf[10];
 
 CDC_LINE_CODING CDC_LineCoding = { 921600, 0, 0, 8 };

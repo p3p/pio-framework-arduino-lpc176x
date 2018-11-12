@@ -41,6 +41,7 @@ extern "C" {
 #define MSC_IO_BUFFERS 2
 #define MSC_IO_BUFFER_SIZE 8*MSC_BLOCK_SIZE
 #define BUFFER_EMPTY 0xffffffff
+uint8_t IOBufferSpace[MSC_IO_BUFFERS*MSC_IO_BUFFER_SIZE]  __attribute__((section("AHBSRAM0"), aligned(4))) = {0}; 
 typedef struct {
   uint8_t *buffer;
   uint32_t length;
@@ -60,12 +61,12 @@ DWORD length;
 
 uint8_t  volatile BulkStage;      /* Bulk Stage */
 
-uint8_t   *BulkBuf = (uint8_t *)(DMA_BUF_ADR + MSC_IO_BUFFER_SIZE*MSC_IO_BUFFERS);
+uint8_t   BulkBuf[MSC_MAX_PACKET]  __attribute__((section("AHBSRAM0"), aligned(4))) = {0};
 uint32_t  BulkLen;                 /* Bulk In/Out Length */
 Sense sense_data;
 
-MSC_CBW CBW;                   /* Command Block Wrapper */
-MSC_CSW CSW;                   /* Command Status Wrapper */
+MSC_CBW CBW  __attribute__((section("AHBSRAM0"), aligned(4))) = {0};  /* Command Block Wrapper */
+MSC_CSW CSW  __attribute__((section("AHBSRAM0"), aligned(4))) = {0};  /* Command Status Wrapper */
 volatile uint8_t media_lock = 0;
 volatile bool device_wants_lock = false;
 volatile bool ep_in_stalled = false;
@@ -207,7 +208,7 @@ static void MSC_QueueDMAIO(uint32_t EPNum, uint8_t *pData, uint32_t cnt) {
 static void MSC_InitBuffers()
 {
   for(int32_t i = 0; i < MSC_IO_BUFFERS; i++) {
-    Buffers[i].buffer = (uint8_t *)(DMA_BUF_ADR + MSC_IO_BUFFER_SIZE*i);
+    Buffers[i].buffer = &IOBufferSpace[MSC_IO_BUFFER_SIZE*i];
     Buffers[i].contents = BUFFER_EMPTY;
     Buffers[i].length = 0;
   }
