@@ -33,18 +33,16 @@ extern "C" {
 #include <CDCSerial.h>
 #include <debug_frmwrk.h>
 
+//I/O Buffers main ones located in USB RAM area
 unsigned char BulkBufIn[USB_CDC_BUFSIZE] __attribute__((section("AHBSRAM0"), aligned(4))) = {0};
 unsigned char BulkBufOut[USB_CDC_BUFSIZE] __attribute__((section("AHBSRAM0"), aligned(4))) = {0};
-unsigned char NotificationBuf[10];
+volatile uint32_t CDC_InContents = CDC_BUFFER_EMPTY;
+volatile uint32_t CDC_OutContents = CDC_BUFFER_EMPTY;
 
+unsigned char NotificationBuf[10];
 CDC_LINE_CODING CDC_LineCoding = { 921600, 0, 0, 8 };
 unsigned short CDC_LineState = 0;
 unsigned short CDC_SerialState = 0;
-volatile uint32_t CDC_OutAvailable = 0;
-bool InBusy = false;
-bool OutBusy = false;
-volatile bool CDC_InActive = false;
-volatile bool CDC_OutActive = false;
 
 extern CDCSerial UsbSerial;
 
@@ -68,9 +66,8 @@ static void CDC_QueueDMAIO(uint32_t EPNum, uint8_t *pData, uint32_t cnt) {
  write data to CDC_OutBuf
  *---------------------------------------------------------------------------*/
 void CDC_WrOutBuf() {
-  //_DBG("WO"); _DBH32(UsbSerial.receive_buffer.free());
-  if (CDC_OutAvailable <= UsbSerial.receive_buffer.free()) {
-    uint32_t bytesToWrite = CDC_OutAvailable;
+  if (CDC_OutContents <= UsbSerial.receive_buffer.free()) {
+    uint32_t bytesToWrite = CDC_OutContents;
     uint8_t * buffer = BulkBufOut;
     while (bytesToWrite--) {
       if(CDC_RecvCallback(*buffer)) {
@@ -78,7 +75,7 @@ void CDC_WrOutBuf() {
           _DBG("Overflow\n");
       }
     }
-    CDC_OutAvailable = 0;
+    CDC_OutContents = CDC_BUFFER_EMPTY;
   }
 }
 
@@ -91,13 +88,11 @@ void CDC_WrOutBuf() {
  Return Value: None
  *---------------------------------------------------------------------------*/
 void CDC_Init() {
+  _DBG("CDC Init\n");
   CDC_LineState = 0;
   CDC_SerialState = 0;
-  CDC_OutAvailable = 0;
-  InBusy = false;
-  OutBusy = false;
-  CDC_InActive = false;
-  CDC_OutActive = false;
+  CDC_OutContents = CDC_BUFFER_EMPTY;
+  CDC_InContents = CDC_BUFFER_EMPTY;
   UsbSerial.host_connected = false;
 }
 
@@ -134,11 +129,8 @@ void CDC_Reset() {
   _DBG("CDC Reset\n");
   // USB reset, any packets in transit may have been flushed
   UsbSerial.host_connected = (CDC_LineState & CDC_DTE_PRESENT) != 0 ? true : false;
-  CDC_OutAvailable = 0;
-  InBusy = false;
-  OutBusy = false;
-  CDC_InActive = false;
-  CDC_OutActive = false;
+  CDC_OutContents = CDC_BUFFER_EMPTY;
+  CDC_InContents = CDC_BUFFER_EMPTY;
   USB_DMA_Enable(CDC_DEP_OUT);
 }
 
@@ -269,19 +261,17 @@ uint32_t CDC_SendBreak(unsigned short wDurationOfBreak) {
  *---------------------------------------------------------------------------*/
 void CDC_BulkIn(void) {
   uint32_t numBytesAvail = UsbSerial.transmit_buffer.available();
-  if (InBusy) _DBG("In Buffer busy\n");
-  if (!InBusy) {
+  if (CDC_InContents != CDC_BUFFER_EMPTY) _DBG("In Buffer busy\n");
+  if (CDC_InContents == CDC_BUFFER_EMPTY) {
     if (numBytesAvail > 0) {
+      // We avoiding needing to send a zero length packet by never sending a full one
       numBytesAvail = numBytesAvail > (USB_CDC_BUFSIZE - 1) ? (USB_CDC_BUFSIZE - 1) : numBytesAvail;
       for(uint32_t i = 0; i < numBytesAvail; ++i) {
         UsbSerial.transmit_buffer.read(&BulkBufIn[i]);
       }
-      InBusy = true;
-      CDC_InActive = true;
+      CDC_InContents = CDC_BUFFER_WAITING;
       CDC_QueueDMAIO(CDC_DEP_IN, &BulkBufIn[0], numBytesAvail);
     }
-    else
-      CDC_InActive = false;
   }
 }
 
@@ -291,14 +281,11 @@ void CDC_BulkIn(void) {
  Return Value: none
  *---------------------------------------------------------------------------*/
 void CDC_BulkOut(void) {
-  CDC_OutAvailable = USB_DMA_BufCnt(CDC_DEP_OUT);
-  //_DBG("BO1"); _DBH32(CDC_OutAvailable);
+  CDC_OutContents = USB_DMA_BufCnt(CDC_DEP_OUT);
   CDC_WrOutBuf();
-  if (CDC_OutAvailable > 0) {
+  if (CDC_OutContents < CDC_BUFFER_WAITING) {
     USB_DMA_Disable(CDC_DEP_OUT);
-    CDC_OutActive = false;
   }
-  //_DBG("BO");_DBH32(CDC_OutActive); _DBG("\n");
 }
 
 /*----------------------------------------------------------------------------
@@ -336,7 +323,7 @@ void CDC_DMA (uint32_t event) {
 
   switch(event) {
     case USB_EVT_IN_DMA_EOT:
-      InBusy = false;
+      CDC_InContents = CDC_BUFFER_EMPTY;
       break;
     case USB_EVT_IN_DMA_NDR:
       CDC_BulkIn();
@@ -345,21 +332,14 @@ void CDC_DMA (uint32_t event) {
       _DBG("Error in "); _DBD32(USB_DMA_Status(CDC_DEP_IN)); _DBG("\n");
       break;
     case USB_EVT_OUT_DMA_EOT:
-      OutBusy = false;
       CDC_BulkOut();
       break;
     case USB_EVT_OUT_DMA_NDR:
-      if (OutBusy) _DBG("Out buffer busy\n");
-      if (!OutBusy) {
-        if (CDC_OutAvailable == 0) {
-          OutBusy = true;
-          CDC_OutActive = true;
-          CDC_QueueDMAIO(CDC_DEP_OUT, &BulkBufOut[0], USB_CDC_BUFSIZE);
-        }
-        else
-          CDC_OutActive = false;
+      if (CDC_OutContents == CDC_BUFFER_WAITING) _DBG("Out buffer busy\n");
+      if (CDC_OutContents == CDC_BUFFER_EMPTY) {
+        CDC_OutContents = CDC_BUFFER_WAITING;
+        CDC_QueueDMAIO(CDC_DEP_OUT, &BulkBufOut[0], USB_CDC_BUFSIZE);
       }
-      //_DBG("NDR");_DBH32(CDC_OutActive); _DBG("\n");
       break;
     case USB_EVT_OUT_DMA_ERR:
       _DBG("Error out "); _DBD32(USB_DMA_Status(CDC_DEP_OUT)); _DBG("\n");

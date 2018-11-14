@@ -29,6 +29,10 @@ extern "C" {
 /* CDC Communication In Endpoint Address */
 #define CDC_CEP_IN       0x81
 
+// I/O Buffer states
+#define CDC_BUFFER_EMPTY 0xffffffff
+#define CDC_BUFFER_WAITING 0xfffffffe
+
 /* CDC Requests Callback Functions */
 extern uint32_t CDC_SendEncapsulatedCommand(void);
 extern uint32_t CDC_GetEncapsulatedResponse(void);
@@ -57,22 +61,18 @@ extern void CDC_Reset();
 /* CDC prepare the SERAIAL_STATE */
 extern unsigned short CDC_GetSerialState(void);
 
-extern volatile bool CDC_InActive;
+extern volatile uint32_t CDC_InContents;
 __inline void CDC_FlushBuffer() {
-  if (!CDC_InActive)
+  if (CDC_InContents == CDC_BUFFER_EMPTY)
     USB_DMA_Enable(CDC_DEP_IN);
 }
 
-extern void USB_Validate();
-extern volatile bool CDC_OutActive;
-extern volatile uint32_t CDC_OutAvailable;
+extern volatile uint32_t CDC_OutContents;
 extern void CDC_WrOutBuf();
 __inline void CDC_FillBuffer(uint32_t available) {
-  if (!CDC_OutActive && available >= CDC_OutAvailable) {
+  if (available >= CDC_OutContents) {
     CDC_WrOutBuf();
-    CDC_OutActive = true;
     USB_DMA_Enable(CDC_DEP_OUT);
   }
-  //USB_Validate();
 }
 #endif  /* __CDCUSER_H__ */
