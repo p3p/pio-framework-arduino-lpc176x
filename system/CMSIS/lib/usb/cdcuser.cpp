@@ -51,7 +51,6 @@ __attribute__((weak)) bool CDC_RecvCallback(const char byte) {
 }
 
 static void CDC_QueueDMAIO(uint32_t EPNum, uint8_t *pData, uint32_t cnt) {
-  //_DBG("DMA IO "); _DBD32((uint32_t) pData); _DBG(" "); _DBD32(cnt); _DBG("\n");
   USB_DMA_DESCRIPTOR desc;
   desc.BufAdr = (uint32_t) pData;
   desc.BufLen = cnt;
