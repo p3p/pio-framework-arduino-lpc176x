@@ -33,6 +33,8 @@
 #include <const_functions.h>
 #include <pinmapping.h>
 
+using boolean = bool;
+
 #define HIGH         0x01
 #define LOW          0x00
 
@@ -99,6 +101,7 @@ extern "C" {
 void _delay_ms(const int delay);
 void delayMicroseconds(unsigned long);
 uint32_t millis();
+uint32_t micros();
 
 //IO functions
 void pinMode(const pin_t, const uint8_t);

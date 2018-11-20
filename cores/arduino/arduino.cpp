@@ -45,16 +45,17 @@ uint32_t millis() {
   return _millis;
 }
 
+uint32_t micros() {
+  return (_millis * 1000) + ((SysTick->LOAD - SysTick->VAL) / (SystemCoreClock / 1000000) );
+}
+
 // This is required for some Arduino libraries we are using
 void delayMicroseconds(uint32_t us) {
-   time::delay_us(us);
+  time::delay_us(us);
 }
 
 void delay(const int msec) {
-  volatile uint32_t end = _millis + msec;
-  SysTick->VAL = SysTick->LOAD; // reset systick counter so next systick is in exactly 1ms
-                                // this could extend the time between systicks by upto 1ms
-  while(util::pending(_millis, end)) __WFE();
+  time::delay_ms(msec);
 }
 
 // IO functions

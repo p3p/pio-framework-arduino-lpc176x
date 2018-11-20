@@ -26,30 +26,35 @@ extern uint32_t active_pwm_pins;
 void pwm_hardware_init(const uint32_t prescale, const uint32_t period);
 
 // return the bits to attach the PWM hardware depending on port using a lookup table
-constexpr int8_t pin_feature_pwm(const pin_t pin) {
-  const std::array<int8_t, 5> lookup {-1, 2, 1, 3, -1};
+[[nodiscard]] constexpr int8_t pin_feature_pwm(const pin_t pin) noexcept {
+  constexpr std::array<int8_t, 5> lookup {-1, 2, 1, 3, -1};
   return lookup[LPC1768_PIN_PORT(pin)];
 }
 
 // return a reference to a PWM timer register using a lookup table as they are not contiguous
-constexpr volatile auto& pin_pwm_match(const pin_t pin) {
-  const std::array<volatile uint32_t*, 7> lookup {&LPC_PWM1->MR0, &LPC_PWM1->MR1, &LPC_PWM1->MR2, &LPC_PWM1->MR3, &LPC_PWM1->MR4, &LPC_PWM1->MR5, &LPC_PWM1->MR6};
-  return *lookup[LPC1768_PIN_PWM(pin)];
+[[nodiscard]] constexpr uint32_t pwm_match_lookup(const pin_t pin) noexcept {
+  constexpr uint32_t MR0_OFFSET = 24, MR4_OFFSET = 64;
+  return LPC_PWM1_BASE + (LPC1768_PIN_PWM(pin) > 3 ? MR4_OFFSET : MR0_OFFSET ) + (sizeof(uint32_t) * LPC1768_PIN_PWM(pin)) ;
+}
+
+// return a reference to a PWM timer register using a lookup table as they are not contiguous
+[[nodiscard]] constexpr auto& pin_pwm_match(const pin_t pin) noexcept {
+   return util::memory_ref<uint32_t>(pwm_match_lookup(pin));
 }
 
 // generate a unique bit for each hardware PWM capable pin
-constexpr uint8_t pwm_pin_id(const pin_t pin) {
+[[nodiscard]] constexpr uint8_t pwm_pin_id(const pin_t pin) noexcept {
   return (LPC1768_PIN_PORT(pin) * 6) + (LPC1768_PIN_PWM(pin) - 1);
 }
 
 // return true if a pwm channel is already attached to a pin
-constexpr bool pwm_channel_active(const pin_t pin) {
+[[nodiscard]] constexpr bool pwm_channel_active(const pin_t pin) noexcept {
   const uint32_t channel = LPC1768_PIN_PWM(pin) - 1;
   return LPC1768_PIN_PWM(pin) && util::bitset_mask(active_pwm_pins, util::bitset_value(6 + channel, 2 * 6 + channel, 3 * 6 + channel));
 }
 
 // return true if a pin is already attached to PWM hardware
-constexpr bool pwm_pin_active(const pin_t pin) {
+[[nodiscard]] constexpr bool pwm_pin_active(const pin_t pin) noexcept {
   return LPC1768_PIN_PWM(pin) && util::bit_test(active_pwm_pins, pwm_pin_id(pin));
 }
 
@@ -74,6 +79,12 @@ __attribute__((always_inline)) inline void pwm_deactivate_channel(const pin_t pi
 __attribute__((always_inline)) inline void pwm_set_match(const pin_t pin, const uint32_t value) {
   pin_pwm_match(pin) = value;
   util::bit_set(LPC_PWM1->LER, LPC1768_PIN_PWM(pin));
+}
+
+__attribute__((always_inline)) inline void pwm_hardware_attach(pin_t pin, uint32_t value) {
+  pwm_set_match(pin, value);
+  pwm_activate_channel(pin);
+  pin_enable_feature(pin, pin_feature_pwm(pin));
 }
 
 #endif // _HARDWARE_PWM_H_
