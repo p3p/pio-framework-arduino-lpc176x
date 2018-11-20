@@ -58,4 +58,8 @@ namespace time {
     delay_cycles( x * (SystemCoreClock / 1000000L));
   }
 
+  template <typename T>
+  static inline __attribute__((__always_inline__)) void delay_ms(const T x) {
+    delay_cycles( x * (SystemCoreClock / 1000L));
+  }
 } // time

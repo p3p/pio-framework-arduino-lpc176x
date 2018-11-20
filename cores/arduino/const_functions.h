@@ -27,8 +27,13 @@ constexpr std::size_t count(T const (&)[N]) noexcept {
 }
 
 template <class L, class R>
-constexpr bool pending(const L now, const R soon) {
-  return ( static_cast<typename std::make_signed<typeof(now + soon)>::type>(now) - soon) < 0;
+constexpr auto difference(const L lhs, const R rhs) noexcept {
+  return static_cast<std::make_signed_t<typeof(lhs + rhs)>>(lhs - rhs);
+}
+
+template <class L, class R>
+constexpr bool pending(const L now, const R soon) noexcept {
+  return difference(now, soon) < 0;
 }
 
 template <class L, class R>
@@ -58,48 +63,53 @@ constexpr void limit(V& v, const N1 n1, const N2 n2) noexcept {
 }
 
 template <typename Bit>
-constexpr auto bit_value(const Bit bit) noexcept {
+[[nodiscard]] constexpr auto bit_value(const Bit bit) noexcept {
   return (static_cast<uint32_t>(1) << bit);
 }
 
 template <typename Value, typename Bit>
-constexpr bool bit_test(const Value& val, const Bit bit) noexcept {
+[[nodiscard]] constexpr bool bit_test(const Value& val, const Bit bit) noexcept {
   return val & bit_value(bit);
 }
 
 template <typename Value, typename Bit>
-constexpr auto bit_set(Value& val, const Bit bit) noexcept {
-  return val |= bit_value(bit);
+constexpr void bit_set(Value& val, const Bit bit) noexcept {
+  val |= bit_value(bit);
 }
 
 template <typename Value, typename Bit>
-constexpr auto bit_clear(Value& val, const Bit bit) noexcept {
-  return val &= ~bit_value(bit);
+constexpr void bit_clear(Value& val, const Bit bit) noexcept {
+  val &= ~bit_value(bit);
 }
 
 template<typename... Args>
-constexpr auto bitset_value(Args... args) noexcept {
+[[nodiscard]] constexpr auto bitset_value(Args... args) noexcept {
   return (... | bit_value(args));
 }
 
 template <typename Value, typename BitSet>
-constexpr auto bitset_set(Value& val, const BitSet bitset) noexcept {
-  return val |= bitset;
+constexpr void bitset_set(Value& val, const BitSet bitset) noexcept {
+  val |= bitset;
 }
 
 template <typename Value, typename BitSet>
-constexpr auto bitset_clear(Value& val, const BitSet bitset) noexcept {
-  return val &= ~bitset;
+constexpr void bitset_clear(Value& val, const BitSet bitset) noexcept {
+  val &= ~bitset;
 }
 
 template <typename Value, typename BitSet>
-constexpr auto bitset_mask(Value& val, const BitSet bitset) noexcept {
+[[nodiscard]] constexpr auto bitset_mask(const Value val, const BitSet bitset) noexcept {
   return val & bitset;
 }
 
 template<typename T>
-constexpr auto memory_ptr(const std::size_t loc) {
+[[nodiscard]] constexpr auto memory_ptr(const std::size_t loc) {
   return reinterpret_cast<volatile T(*)>(loc);
+}
+
+template<typename T>
+[[nodiscard]] constexpr auto& memory_ref(const std::size_t loc) {
+  return *reinterpret_cast<volatile T(*)>(loc);
 }
 
 #define _BV(n) (1<<(n))
