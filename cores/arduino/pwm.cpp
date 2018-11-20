@@ -20,6 +20,7 @@
 #include <SoftwarePWM.h>
 #include <pwm.h>
 #include <Arduino.h>
+#include <time.h>
 
 void pwm_init(void) {
   const uint32_t PR = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / 1000000) - 1;      // Prescalar to create 1 MHz output
@@ -30,20 +31,18 @@ void pwm_init(void) {
 
 bool pwm_attach_pin(const pin_t pin, const uint32_t value) {
   // Hardware PWM
-  if(pwm_pin_active(pin)) return true;                         // already attached to hardware channel?
-  if(LPC1768_PIN_PWM(pin) && !pwm_channel_active(pin)) {       // hardware capable and channel requried by pin not in use,
-    pin_enable_feature(pin, pin_feature_pwm(pin));             // attach Hardware PWM to pin
-    pwm_set_match(pin, value);
-    pwm_activate_channel(pin);                                 // activate the pwm channel for output on a pin
-    return true;
-  }
+  // if(pwm_pin_active(pin)) return true;                         // already attached to hardware channel?
+  // if(LPC1768_PIN_PWM(pin) && !pwm_channel_active(pin)) {       // hardware capable and channel requried by pin not in use,
+  //   pwm_hardware_attach(pin, value);
+  //   return true;
+  // }
 
   // Fall back on Timer3 based PWM
   if(SoftwarePWM.exists(pin)) return true; // already attached on software pin
   if(SoftwarePWM.update(pin, value)) {
-    pin_enable_feature(pin, 0);            // initialise pin for gpio output
     gpio_set_output(pin);
     gpio_clear(pin);
+    pin_enable_feature(pin, 0);            // initialise pin for gpio output
     return true;
   }
   return false;

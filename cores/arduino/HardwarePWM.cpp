@@ -16,20 +16,13 @@
  */
 
 #include "HardwarePWM.h"
-
 uint32_t active_pwm_pins = 0;
 
 void pwm_hardware_init(const uint32_t prescale, const uint32_t period) {
   // Reset and set up timing
   LPC_PWM1->TCR  = util::bit_value(1);  // reset and hold timer
   LPC_PWM1->PR   = prescale;
-  LPC_PWM1->MR0  = 1000; //todo: if the period is set correctly here then the first set of match registers doesnt work, figure out why
-  LPC_PWM1->MR1  = 0;
-  LPC_PWM1->MR2  = 0;
-  LPC_PWM1->MR3  = 0;
-  LPC_PWM1->MR4  = 0;
-  LPC_PWM1->MR5  = 0;
-  LPC_PWM1->MR6  = 0;
+  LPC_PWM1->MR0  = 1; //todo: if the period is set correctly here then the first set of match registers doesnt work, figure out why
   // Configure PWM
   LPC_PWM1->MCR  = util::bit_value(1);  // Configured to reset TC if it matches MR0, No interrupts
   LPC_PWM1->CTCR = 0;                   // Set counters to increment on prescaled timer

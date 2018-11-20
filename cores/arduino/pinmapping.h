@@ -266,18 +266,19 @@ constexpr uint32_t pin_feature_bits(const pin_t pin, const uint8_t feature) {
   return feature << (LPC1768_PIN_PIN(pin) < 16 ? LPC1768_PIN_PIN(pin) : LPC1768_PIN_PIN(pin) - 16) * 2;
 }
 
-constexpr volatile auto& pin_feature_reg(const pin_t pin) {
-  return *util::memory_ptr<uint32_t>(LPC_PINCON_BASE + sizeof(uint32_t) * ((LPC1768_PIN_PORT(pin) * 2) + (LPC1768_PIN_PIN(pin) > 15)) );
+constexpr auto& pin_feature_reg(const pin_t pin) {
+  return util::memory_ref<uint32_t>(LPC_PINCON_BASE + (sizeof(uint32_t) * ((LPC1768_PIN_PORT(pin) * 2) + (LPC1768_PIN_PIN(pin) > 15))) );
 }
 
 __attribute__((always_inline)) inline void pin_enable_feature(const pin_t pin, uint8_t feature) {
-  util::bitset_clear(pin_feature_reg(pin), pin_feature_bits(pin, 0b11));
-  util::bitset_set(pin_feature_reg(pin), pin_feature_bits(pin, feature));
+  auto feature_reg = pin_feature_reg(pin);
+  util::bitset_clear(feature_reg, pin_feature_bits(pin, 0b11));
+  util::bitset_set(feature_reg, pin_feature_bits(pin, feature));
 }
 
 constexpr auto& gpio_port(uint8_t port) {
   constexpr std::size_t LPC_PORT_OFFSET = 0x0020;
-  return *util::memory_ptr<LPC_GPIO_TypeDef>(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port);
+  return util::memory_ref<LPC_GPIO_TypeDef>(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port);
 }
 
 __attribute__((always_inline)) inline void gpio_set_input(const pin_t pin) {
