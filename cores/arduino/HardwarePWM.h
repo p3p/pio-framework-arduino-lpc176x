@@ -58,30 +58,30 @@ void pwm_hardware_init(const uint32_t prescale, const uint32_t period);
   return LPC1768_PIN_PWM(pin) && util::bit_test(active_pwm_pins, pwm_pin_id(pin));
 }
 
-__attribute__((always_inline)) inline void pwm_set_period(const uint32_t period) {
-  LPC_PWM1->MR0  = period - 1;               // TC resets every period cycles
+[[gnu::always_inline]] inline void pwm_set_period(const uint32_t period) {
+  LPC_PWM1->MR0 = period - 1;               // TC resets every period cycles
   util::bit_set(LPC_PWM1->LER, 0);
 }
 
 // update the bitset an activate hardware pwm channel for output
-__attribute__((always_inline)) inline void pwm_activate_channel(const pin_t pin) {
+[[gnu::always_inline]] inline void pwm_activate_channel(const pin_t pin) {
   util::bit_set(active_pwm_pins, pwm_pin_id(pin));         // mark the pin as active
   util::bit_set(LPC_PWM1->PCR, 8 + LPC1768_PIN_PWM(pin));  // turn on the pins PWM output (8 offset + PWM channel)
 }
 
 // update the bitset and deactivate the hardware pwm channel
-__attribute__((always_inline)) inline void pwm_deactivate_channel(const pin_t pin) {
+[[gnu::always_inline]] inline void pwm_deactivate_channel(const pin_t pin) {
   util::bit_clear(active_pwm_pins, pwm_pin_id(pin));      // mark pin as inactive
   if(!pwm_channel_active(pin)) util::bit_clear(LPC_PWM1->PCR, 8 + LPC1768_PIN_PWM(pin)); // turn off the PWM output
 }
 
 // update the match register for a channel and set the latch to update on next period
-__attribute__((always_inline)) inline void pwm_set_match(const pin_t pin, const uint32_t value) {
+[[gnu::always_inline]] inline void pwm_set_match(const pin_t pin, const uint32_t value) {
   pin_pwm_match(pin) = value;
   util::bit_set(LPC_PWM1->LER, LPC1768_PIN_PWM(pin));
 }
 
-__attribute__((always_inline)) inline void pwm_hardware_attach(pin_t pin, uint32_t value) {
+[[gnu::always_inline]] inline void pwm_hardware_attach(pin_t pin, uint32_t value) {
   pwm_set_match(pin, value);
   pwm_activate_channel(pin);
   pin_enable_feature(pin, pin_feature_pwm(pin));
