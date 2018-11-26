@@ -104,7 +104,7 @@ public:
   //using HalSerial::write;
 
   // public only for easy access by interrupt handlers
-  static inline void handle_interrupt() __attribute__((__always_inline__));
+  [[gnu::always_inline]] static inline void handle_interrupt();
 };
 
 // Arduino 0012 workaround
