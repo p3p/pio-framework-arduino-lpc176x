@@ -1,65 +1,50 @@
 #pragma once
 
 #include <LPC17xx.h>
-#include <const_functions.h>
 
 namespace time {
 
-  static inline __attribute__((__always_inline__)) void nop() {
-       __asm__ __volatile__ ( "and r0,r0,r0" ::: );
+  [[gnu::always_inline, gnu::optimize("O3")]] static inline void nop() {
+    __asm__ __volatile__("nop;\n\t":::);
   }
 
-  template <typename T>
-  static inline __attribute__((__always_inline__)) void delay_4cycles(T cy) // +1 cycle
-  {
-    #if ARCH_PIPELINE_RELOAD_CYCLES < 2
-      #define EXTRA_NOP_CYCLES "and r0,r0,r0"
-    #else
-      #define EXTRA_NOP_CYCLES ""
-    #endif
-
-    __asm__ __volatile__
-    (
-      ".syntax unified" "\n\t" // is to prevent CM0,CM1 non-unified sintax
-      "loop%=:" "\n\t"
-      " subs %[cnt],#1" "\n\t"
-      EXTRA_NOP_CYCLES "\n\t"
-      " bne loop%=" "\n\t"
-      : [cnt]"+r"(cy) // output: +r means input+output
-      : // input:
-      : "cc" // clobbers:
+  [[gnu::always_inline, gnu::optimize("O3")]] static inline void __delay_4cycles(uint32_t cy) { // +1 cycle
+    __asm__ __volatile__(
+      "  .syntax unified\n\t" // is to prevent CM0,CM1 non-unified syntax
+      "1:\n\t"
+      "  subs %[cnt],#1\n\t" // 1
+      "  nop\n\t"            // 1
+      "  bne 1b\n\t"         // 1 + (1? reload)
+      : [cnt]"+r"(cy)   // output: +r means input+output
+      :                 // input:
+      : "cc"            // clobbers:
     );
   }
 
-  template <typename T>
-  static inline __attribute__((__always_inline__)) void delay_cycles(const T x) {
-      if (__builtin_constant_p(x)) {
-          const T max_nops = 4;
-          if (x <= (max_nops)) {
-            for(T i = 0; i < x; i++) nop();
-          } else {
-              const T rem = (x - 1) % (max_nops);
-              for(T i = 0; i < rem; i++) nop();
-              const T delay = (x - 1) / (max_nops);
-              if (delay) delay_4cycles(x);
-          }
-      } else {
-          delay_4cycles(x / 4);
+  // Delay in cycles
+  [[gnu::always_inline, gnu::optimize("O3")]] static inline void delay_cycles(uint32_t x) {
+    if (__builtin_constant_p(x)) {
+      constexpr uint32_t MAXNOPS = 4;
+      if (x <= (MAXNOPS)) {
+        switch (x) { case 4: nop(); case 3: nop(); case 2: nop(); case 1: nop(); }
+      } else { // because of +1 cycle inside delay_4cycles
+        const uint32_t rem = (x - 1) % (MAXNOPS);
+        switch (rem) { case 3: nop(); case 2: nop(); case 1: nop(); }
+        if ((x = (x - 1) / (MAXNOPS)))
+          __delay_4cycles(x); // if need more then 4 nop loop is more optimal
       }
+    } else if ((x >>= 2)) __delay_4cycles(x);
   }
 
-  template <typename T>
-  static inline __attribute__((__always_inline__)) void delay_ns(const T x) {
-    delay_cycles( x * (SystemCoreClock / 1000000L) / 1000L );
+  [[gnu::always_inline]] static inline void delay_ns(const uint32_t x) {
+    delay_cycles( x * (F_CPU / 1000000L) / 1000L );
   }
 
-  template <typename T>
-  static inline __attribute__((__always_inline__)) void delay_us(const T x) {
-    delay_cycles( x * (SystemCoreClock / 1000000L));
+  [[gnu::always_inline]] static inline void delay_us(const uint32_t x) {
+    delay_cycles( x * (F_CPU / 1000000L));
   }
 
-  template <typename T>
-  static inline __attribute__((__always_inline__)) void delay_ms(const T x) {
-    delay_cycles( x * (SystemCoreClock / 1000L));
+  [[gnu::always_inline]] static inline void delay_ms(const uint32_t x) {
+    delay_cycles( x * (F_CPU / 1000L));
   }
 } // time
