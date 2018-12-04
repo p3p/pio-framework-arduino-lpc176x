@@ -928,6 +928,11 @@ void MSC_BulkOut (void) {
   }
 }
 
+/*
+ *  MSC DMA event call back
+ *    Parameters:      DMA I/O event
+ *    Return Value:    None
+ */
 void MSC_DMA (uint32_t event) {
   //_DBG("DMA event "); _DBD32(event); _DBG(" "); _DBD32(USB_DMA_Status(MSC_EP_IN)); _DBG("\n");
 

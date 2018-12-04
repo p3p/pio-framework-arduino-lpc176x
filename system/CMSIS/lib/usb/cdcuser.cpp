@@ -50,6 +50,10 @@ __attribute__((weak)) bool CDC_RecvCallback(const char byte) {
   return true;
 }
 
+/*----------------------------------------------------------------------------
+ CDC_QueueDMAIO
+ Create a new DMA request and add it to the DMA queue for this endpoint
+ *---------------------------------------------------------------------------*/
 static void CDC_QueueDMAIO(uint32_t EPNum, uint8_t *pData, uint32_t cnt) {
   USB_DMA_DESCRIPTOR desc;
   desc.BufAdr = (uint32_t) pData;
@@ -62,7 +66,8 @@ static void CDC_QueueDMAIO(uint32_t EPNum, uint8_t *pData, uint32_t cnt) {
 
 
 /*----------------------------------------------------------------------------
- write data to CDC_OutBuf
+ CDC_WrOutBuf
+ Write data from the USB buffer to the serial line ring buffer
  *---------------------------------------------------------------------------*/
 void CDC_WrOutBuf() {
   if (CDC_OutContents <= UsbSerial.receive_buffer.free()) {
@@ -263,7 +268,7 @@ void CDC_BulkIn(void) {
   if (CDC_InContents != CDC_BUFFER_EMPTY) _DBG("In Buffer busy\n");
   if (CDC_InContents == CDC_BUFFER_EMPTY) {
     if (numBytesAvail > 0) {
-      // We avoiding needing to send a zero length packet by never sending a full one
+      // We avoid needing to send a zero length packet by never sending a full one
       numBytesAvail = numBytesAvail > (USB_CDC_BUFSIZE - 1) ? (USB_CDC_BUFSIZE - 1) : numBytesAvail;
       for(uint32_t i = 0; i < numBytesAvail; ++i) {
         UsbSerial.transmit_buffer.read(&BulkBufIn[i]);
@@ -317,6 +322,11 @@ void CDC_NotificationIn(void) {
   USB_WriteEP(CDC_CEP_IN, &NotificationBuf[0], 10);     // send notification
 }
 
+/*----------------------------------------------------------------------------
+ CDC_DMA Handle DMA I/O events
+ Parameters:   The DMA event to process
+ Return Value: none
+ *---------------------------------------------------------------------------*/
 void CDC_DMA (uint32_t event) {
   //_DBG("DMA event "); _DBD32(event); _DBG(" "); _DBD32(USB_DMA_Status(CDC_DEP_OUT)); _DBG("\n");
 
