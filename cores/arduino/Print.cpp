@@ -150,9 +150,7 @@ size_t Print::printFloat(double number, uint8_t digits) {
     const char *ptr;
     double floatNum_f32;
     va_list argp;
-    int16_t num_s16;
     int32_t num_s32;
-    uint16_t num_u16;
     uint32_t num_u32;
     char *str;
     char  ch;
