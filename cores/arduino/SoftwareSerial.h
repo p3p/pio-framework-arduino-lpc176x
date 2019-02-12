@@ -50,36 +50,39 @@ private:
   // per object data
   pin_t _receivePin;
   pin_t _transmitPin;
-//  uint32_t _receiveBitMask; // for rx interrupts
-  uint32_t _receivePort;
-  uint32_t _receivePortPin;
-
-
-  // Expressed as 4-cycle delays (must never be 0!)
-  uint16_t _rx_delay_centering;
-  uint16_t _rx_delay_intrabit;
-  uint16_t _rx_delay_stopbit;
-  uint16_t _tx_delay;
+  uint32_t _speed;
 
   uint16_t _buffer_overflow:1;
   uint16_t _inverse_logic:1;
+  uint16_t _half_duplex:1;
+  uint16_t _output_pending:1;
+
+  unsigned char _receive_buffer[_SS_MAX_RX_BUFF];
+  volatile uint8_t _receive_buffer_tail;
+  volatile uint8_t _receive_buffer_head;
+
+  uint32_t delta_start;
 
   // static data
-  static unsigned char _receive_buffer[_SS_MAX_RX_BUFF];
-  static volatile uint8_t _receive_buffer_tail;
-  static volatile uint8_t _receive_buffer_head;
-  static SoftwareSerial *active_object;
+  static bool initialised;
+  static SoftwareSerial * active_listener;
+  static SoftwareSerial * volatile active_out;
+  static SoftwareSerial * volatile active_in;
+  static int32_t tx_tick_cnt;
+  static int32_t rx_tick_cnt;
+  static uint32_t tx_buffer;
+  static int32_t tx_bit_cnt;
+  static uint32_t rx_buffer;
+  static int32_t rx_bit_cnt;
+  static uint32_t cur_speed;
 
   // private methods
+  void send();
   void recv();
-  uint32_t rx_pin_read();
-  void tx_pin_write(uint8_t pin_state);
-  void setTX(pin_t transmitPin);
-  void setRX(pin_t receivePin);
-  void setRxIntMsk(bool enable);
-
-  // private static method for timing
-  static inline void tunedDelay(uint32_t delay);
+  void setTX();
+  void setRX();
+  void setSpeed(uint32_t speed);
+  void setRXTX(bool input);
 
 public:
   // public methods
@@ -89,7 +92,7 @@ public:
   void begin(long speed);
   bool listen();
   void end();
-  bool isListening() { return this == active_object; }
+  bool isListening() { return active_listener == this; }
   bool stopListening();
   bool overflow() { bool ret = _buffer_overflow; if (ret) _buffer_overflow = false; return ret; }
   int16_t peek();
