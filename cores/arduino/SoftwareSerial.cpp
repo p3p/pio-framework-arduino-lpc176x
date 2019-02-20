@@ -60,14 +60,17 @@ typedef struct _DELAY_TABLE {
 
 // rough delay estimation
 static const DELAY_TABLE table[] = {
-  //baud    |rxcenter|rxintra |rxstop  |tx { 250000,   2,      4,       4,       4,   }, //Done but not good due to instruction cycle error { 115200,   4,      8,       8,       8,   }, //Done but not good due to instruction cycle error
-  //{ 74880,   69,       139,       62,      162,  }, // estimation
-  //{ 57600,   100,       185,      1,       208,  }, // Done but not good due to instruction cycle error
-  //{ 38400,   13,      26,      26,      26,  }, // Done
-  //{ 19200,   26,      52,      52,      52,  }, // Done { 9600,    52,      104,     104,     104, }, // Done
-  //{ 4800,    104,     208,     208,     208, },
-  //{ 2400,    208,     417,     417,     417, },
-  //{ 1200,    416,    833,      833,     833,},
+  //baud    |rxcenter|rxintra |rxstop  |tx 
+  { 250000,   2,      4,       4,       4,   }, //Done but not good due to instruction cycle error 
+  { 115200,   4,      8,       8,       8,   }, //Done but not good due to instruction cycle error
+  { 74880,   69,       139,       62,      162,  }, // estimation
+  { 57600,   100,       185,      1,       208,  }, // Done but not good due to instruction cycle error
+  { 38400,   13,      26,      26,      26,  }, // Done
+  { 19200,   26,      52,      52,      52,  }, // Done 
+  { 9600,    52,      104,     104,     104, }, // Done
+  { 4800,    104,     208,     208,     208, },
+  { 2400,    208,     417,     417,     417, },
+  { 1200,    416,    833,      833,     833,},
 };
 
 //
@@ -150,10 +153,13 @@ void SoftwareSerial::recv() {
   }
 }
 
-uint32_t SoftwareSerial::rx_pin_read() {
-  return digitalRead(_receivePin);
+inline uint32_t SoftwareSerial::rx_pin_read() {
+//  return digitalRead(_receivePin);
+  return util::bit_test(gpio_port(LPC1768_PIN_PORT(_receivePin)).FIOPIN, LPC1768_PIN_PIN(_receivePin));
 }
 
+
+#ifndef USE_NO_INTERRUPT_PINS
 //
 // Interrupt handling
 //
@@ -166,6 +172,14 @@ inline void SoftwareSerial::handle_interrupt() {
 extern "C" void intWrapper() {
   SoftwareSerial::handle_interrupt();
 }
+
+#else
+/* loop for receive data */
+void SoftwareSerial::listenReceive() {
+  if (active_object)
+      active_object->recv();
+}
+#endif
 //
 // Constructor
 //
@@ -228,18 +242,21 @@ void SoftwareSerial::begin(long speed) {
     }
   }
 
+#ifndef USE_NO_INTERRUPT_PINS
   attachInterrupt(_receivePin, intWrapper, CHANGE); //this->handle_interrupt, CHANGE);
-
+#endif
   listen();
   tunedDelay(_tx_delay);
 
 }
 
 void SoftwareSerial::setRxIntMsk(bool enable) {
+#ifndef USE_NO_INTERRUPT_PINS
   if (enable)
     GpioEnableInt(_receivePort,_receivePin,CHANGE);
   else
     GpioDisableInt(_receivePort,_receivePin);
+#endif
 }
 
 void SoftwareSerial::end() {
@@ -280,20 +297,29 @@ size_t SoftwareSerial::write(uint8_t b) {
   cli();  // turn off interrupts for a clean txmit
 
   // Write the start bit
-  digitalWrite(_transmitPin, !!inv);
+  gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOCLR = util::bit_value(LPC1768_PIN_PIN(_transmitPin));
+  //digitalWrite(_transmitPin, !!inv);
 
   tunedDelay(delay);
 
   // Write each of the 8 bits
   for (uint8_t i = 8; i > 0; --i) {
-    digitalWrite(_transmitPin, b & 1); // send 1 //(GPIO_Desc[_transmitPin].P)->DOUT |= GPIO_Desc[_transmitPin].bit;
+    //digitalWrite(_transmitPin, b & 1); // send 1 //(GPIO_Desc[_transmitPin].P)->DOUT |= GPIO_Desc[_transmitPin].bit;
                                        // send 0 //(GPIO_Desc[_transmitPin].P)->DOUT &= ~GPIO_Desc[_transmitPin].bit;
+    if(b & 1)
+    {
+      gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOSET = util::bit_value(LPC1768_PIN_PIN(_transmitPin));
+    }
+    else
+    {
+      gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOCLR = util::bit_value(LPC1768_PIN_PIN(_transmitPin));
+    }
     tunedDelay(delay);
     b >>= 1;
   }
 
   // restore pin to natural state
-  digitalWrite(_transmitPin, !inv);
+  gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOSET = util::bit_value(LPC1768_PIN_PIN(_transmitPin));//digitalWrite(_transmitPin, !inv);
 
   sei(); // turn interrupts back on
   tunedDelay(delay);
