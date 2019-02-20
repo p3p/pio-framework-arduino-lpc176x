@@ -158,6 +158,17 @@ inline uint32_t SoftwareSerial::rx_pin_read() {
   return util::bit_test(gpio_port(LPC1768_PIN_PORT(_receivePin)).FIOPIN, LPC1768_PIN_PIN(_receivePin));
 }
 
+inline void SoftwareSerial::tx_pin_write(uint8_t pin_state) {
+  if(pin_state) {
+    gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOSET = util::bit_value(LPC1768_PIN_PIN(_transmitPin));
+  }
+  else
+  {
+    gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOCLR = util::bit_value(LPC1768_PIN_PIN(_transmitPin));
+  }
+}
+
+
 
 #ifndef USE_NO_INTERRUPT_PINS
 //
@@ -297,29 +308,19 @@ size_t SoftwareSerial::write(uint8_t b) {
   cli();  // turn off interrupts for a clean txmit
 
   // Write the start bit
-  gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOCLR = util::bit_value(LPC1768_PIN_PIN(_transmitPin));
-  //digitalWrite(_transmitPin, !!inv);
+  tx_pin_write(inv);
 
   tunedDelay(delay);
 
   // Write each of the 8 bits
   for (uint8_t i = 8; i > 0; --i) {
-    //digitalWrite(_transmitPin, b & 1); // send 1 //(GPIO_Desc[_transmitPin].P)->DOUT |= GPIO_Desc[_transmitPin].bit;
-                                       // send 0 //(GPIO_Desc[_transmitPin].P)->DOUT &= ~GPIO_Desc[_transmitPin].bit;
-    if(b & 1)
-    {
-      gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOSET = util::bit_value(LPC1768_PIN_PIN(_transmitPin));
-    }
-    else
-    {
-      gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOCLR = util::bit_value(LPC1768_PIN_PIN(_transmitPin));
-    }
+    tx_pin_write(b & 1);
     tunedDelay(delay);
     b >>= 1;
   }
 
-  // restore pin to natural state
-  gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOSET = util::bit_value(LPC1768_PIN_PIN(_transmitPin));//digitalWrite(_transmitPin, !inv);
+  // restore pin to natural state  
+  tx_pin_write(!inv);
 
   sei(); // turn interrupts back on
   tunedDelay(delay);
