@@ -42,6 +42,7 @@
 
 void GpioEnableInt(uint32_t port, uint32_t pin, uint32_t mode);
 void GpioDisableInt(uint32_t port, uint32_t pin);
+
 //
 // Statics
 //
