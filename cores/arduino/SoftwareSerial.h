@@ -56,7 +56,6 @@ private:
   uint32_t _receivePort;
   uint32_t _receivePortPin;
 
-
   // Expressed as 4-cycle delays (must never be 0!)
   uint16_t _rx_delay_centering;
   uint16_t _rx_delay_intrabit;
