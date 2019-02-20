@@ -42,6 +42,8 @@
 * Definitions
 ******************************************************************************/
 
+#define USE_NO_INTERRUPT_PINS
+
 #define _SS_MAX_RX_BUFF 64 // RX buffer size
 
 class SoftwareSerial : public Stream
@@ -87,6 +89,7 @@ public:
   SoftwareSerial(pin_t receivePin, pin_t transmitPin, bool inverse_logic = false);
   ~SoftwareSerial();
   void begin(long speed);
+  void listenReceive();
   bool listen();
   void end();
   bool isListening() { return this == active_object; }
