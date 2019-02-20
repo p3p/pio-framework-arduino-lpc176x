@@ -160,16 +160,11 @@ inline uint32_t SoftwareSerial::rx_pin_read() {
 }
 
 inline void SoftwareSerial::tx_pin_write(uint8_t pin_state) {
-  if(pin_state) {
+  if(pin_state)
     gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOSET = util::bit_value(LPC1768_PIN_PIN(_transmitPin));
-  }
   else
-  {
     gpio_port(LPC1768_PIN_PORT(_transmitPin)).FIOCLR = util::bit_value(LPC1768_PIN_PIN(_transmitPin));
-  }
 }
-
-
 
 #ifndef USE_NO_INTERRUPT_PINS
 //
