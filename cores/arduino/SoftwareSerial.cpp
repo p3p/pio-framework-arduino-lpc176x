@@ -193,7 +193,6 @@ inline void SoftwareSerial::send() {
 // The receive routine called by the interrupt handler
 //
 inline void SoftwareSerial::recv() {
-  //gpio_set(P0_03, HIGH);
   if (--rx_tick_cnt <= 0) {
     uint8_t inbit = gpio_get(_receivePin);
     if (rx_bit_cnt == -1) {
@@ -232,7 +231,6 @@ inline void SoftwareSerial::recv() {
       rx_tick_cnt = OVERSAMPLE;
     }
   }
-  //gpio_set(P0_03, LOW);
 }
 
 //
@@ -241,18 +239,13 @@ inline void SoftwareSerial::recv() {
 
 /* static */
 inline void SoftwareSerial::handle_interrupt() {
-  //gpio_set(P0_03, HIGH);
   if (active_in) active_in->recv();
-  //gpio_set(P0_03, HIGH);
   if (active_out) active_out->send();
-  //gpio_set(P0_03, LOW);
 }
 
 extern "C" void RIT_IRQHandler(void) {
-  //gpio_set(P0_03, HIGH);
   LPC_RIT->RICTRL |= 1;
   SoftwareSerial::handle_interrupt();
-  //gpio_set(P0_03, LOW);
 }
 
 //
@@ -291,7 +284,6 @@ void SoftwareSerial::begin(long speed) {
     RIT_Init(LPC_RIT);
     NVIC_SetPriority(RIT_IRQn, NVIC_EncodePriority(0, INTERRUPT_PRIORITY, 0));
     initialised = true;
-  pinMode(P0_03, OUTPUT);
   }
   if (!_half_duplex) {
     setTX();
@@ -301,13 +293,6 @@ void SoftwareSerial::begin(long speed) {
     setTX();  
   
   listen();
-  _DBG("Speed ");
-  _DBD32(_speed);
-  _DBG(" rx ");
-  _DBD32(_receivePin);
-  _DBG(" tx ");
-  _DBD32(_transmitPin);
-  _DBG("\n");
   //printf("hd %d active_in %d tx %d rx %d\n", _half_duplex, active_in, _receivePin, _transmitPin);
 }
 
@@ -326,7 +311,6 @@ int16_t SoftwareSerial::read() {
   // Read from "head"
   uint8_t d = _receive_buffer[_receive_buffer_head]; // grab next byte
   _receive_buffer_head = (_receive_buffer_head + 1) % _SS_MAX_RX_BUFF;
-  //_DBG("Read "); _DBD32(d); _DBG("\n");
   return d;
 }
 
@@ -335,7 +319,6 @@ size_t SoftwareSerial::available() {
 }
 
 size_t SoftwareSerial::write(uint8_t b) {
-  //_DBG("Send "); _DBD32(b); _DBG("\n");
   // wait for previous transmit to complete
   _output_pending = 1;
   while(active_out) ;
