@@ -25,22 +25,14 @@
 extern "C" {
 #include "lpc_types.h"
 }
+
 /* USB RAM Definitions */
 #define USB_RAM_ADR     0x2007C000  /* USB RAM Start Address */
 #define USB_RAM_SZ      0x00004000  /* USB RAM Size (16kB) */
 
 /* DMA Endpoint Descriptors */
-#define DD_NISO_CNT             16  /* Non-Iso EP DMA Descr. Count (max. 32) */
+#define DD_NISO_CNT             32  /* Non-Iso EP DMA Descr. Count (max. 32) */
 #define DD_ISO_CNT               8  /* Iso EP DMA Descriptor Count (max. 32) */
-#define DD_NISO_SZ    (DD_NISO_CNT * 16)    /* Non-Iso DMA Descr. Size */
-#define DD_ISO_SZ     (DD_ISO_CNT  * 20)    /* Iso DMA Descriptor Size */
-#define DD_NISO_ADR   (USB_RAM_ADR + 128)   /* Non-Iso DMA Descr. Address */
-#define DD_ISO_ADR    (DD_NISO_ADR + DD_NISO_SZ) /* Iso DMA Descr. Address */
-#define DD_SZ                 (128 + DD_NISO_SZ + DD_ISO_SZ) /* Descr. Size */
-
-/* DMA Buffer Memory Definitions */
-#define DMA_BUF_ADR   (USB_RAM_ADR + DD_SZ) /* DMA Buffer Start Address */
-#define DMA_BUF_SZ    (USB_RAM_SZ  - DD_SZ) /* DMA Buffer Size */
 
 /* USB Error Codes */
 #define USB_ERR_PID         0x0001  /* PID Error */

@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <Stream.h>
 #include <usb/usb.h>
+#include <usb/usbcfg.h>
 #include <usb/usbhw.h>
 #include <usb/usbreg.h>
 #include <usb/cdcuser.h>
@@ -46,13 +47,13 @@ template <typename T, uint32_t S> class RingBuffer {
 public:
   RingBuffer() {index_read = index_write = 0;}
 
-  uint32_t available() {return mask(index_write - index_read);}
-  uint32_t free() {return buffer_size - available();}
-  bool empty() {return index_read == index_write;}
-  bool full() {return next(index_write) == index_read;}
+  uint32_t available() const {return mask(index_write - index_read);}
+  uint32_t free() const {return size() - available();}
+  bool empty() const {return index_read == index_write;}
+  bool full() const {return next(index_write) == index_read;}
   void clear() {index_read = index_write = 0;}
 
-  bool peek(T *const value) {
+  bool peek(T *const value) const {
     if (value == nullptr || empty()) return false;
     *value = buffer[index_read];
     return true;
@@ -65,7 +66,7 @@ public:
     return 1;
   }
 
-  uint32_t write(T value) {
+  uint32_t write(const T value) {
     uint32_t next_head = next(index_write);
     if (next_head == index_read) return 0;     // buffer full
     buffer[index_write] = value;
@@ -73,12 +74,16 @@ public:
     return 1;
   }
 
+  constexpr uint32_t size() const {
+    return buffer_size - 1;
+  }
+
 private:
-  inline uint32_t mask(uint32_t val) {
+  inline uint32_t mask(uint32_t val) const {
     return val & buffer_mask;
   }
 
-  inline uint32_t next(uint32_t val) {
+  inline uint32_t next(uint32_t val) const {
     return mask(val + 1);
   }
 
@@ -111,7 +116,9 @@ public:
 
   int16_t read() {
     uint8_t value;
-    return receive_buffer.read(&value) ? value : -1;
+    uint32_t ret = receive_buffer.read(&value);
+    CDC_FillBuffer(receive_buffer.free());
+    return (ret ? value : -1);
   }
 
   size_t write(const uint8_t c) {
@@ -131,6 +138,7 @@ public:
 
   void flush() {
     receive_buffer.clear();
+    CDC_FillBuffer(receive_buffer.free());
   }
 
   uint8_t availableForWrite(void) {
@@ -139,7 +147,9 @@ public:
 
   void flushTX(void) {
     const uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
-    while (transmit_buffer.available() && host_connected && util::pending(millis(), usb_tx_timeout)) { /* nada */}
+    while (transmit_buffer.available() && host_connected && util::pending(millis(), usb_tx_timeout)) {
+      CDC_FlushBuffer();
+    }
   }
 
   size_t printf(const char *format, ...) {
@@ -152,16 +162,9 @@ public:
     if (length > 0 && length < 256) {
       uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
       while (i < (size_t)length && host_connected && util::pending(millis(), usb_tx_timeout)) {
-        size_t cnt = transmit_buffer.write(buffer[i]);
-        if (cnt == 0) {
-          CDC_FlushBuffer();
-        } else {
-          i += cnt;
-          usb_tx_timeout = millis() + USBCDCTIMEOUT;
-        }
-      }
-      if (i > 0)
+        i += transmit_buffer.write(buffer[i]);
         CDC_FlushBuffer();
+      }
     }
     return i;
   }
