@@ -26,11 +26,30 @@ extern "C" {
 #include <usb/usb.h>
 #include <usb/msc.h>
 #include <usb/usbcfg.h>
+#include <usb/usbreg.h>
 #include <usb/usbhw.h>
 #include <usb/usbcore.h>
+#include <usb/usbuser.h>
 #include <usb/mscuser.h>
+#include <Arduino.h>
 
 #include <chanfs/diskio.h>
+/*
+ * I/O Buffer management. Buffers are held in USB memory for faster DMA
+ * access.
+ */
+#define MSC_IO_BUFFERS 2
+#define MSC_IO_BUFFER_SIZE 8*MSC_BLOCK_SIZE
+#define BUFFER_EMPTY 0xffffffff
+uint8_t IOBufferSpace[MSC_IO_BUFFERS*MSC_IO_BUFFER_SIZE]  __attribute__((section("AHBSRAM0"), aligned(4))) = {0}; 
+typedef struct {
+  uint8_t *buffer;
+  uint32_t length;
+  uint32_t contents;
+} IOBuffer;
+IOBuffer Buffers[MSC_IO_BUFFERS];
+uint32_t BufferIn;
+uint32_t BufferOut;
 
 DWORD MSC_BlockCount = 0;
 
@@ -39,26 +58,15 @@ uint32_t MemOK;                   /* Memory OK */
 DWORD lba;                        /* start block */
 DWORD transfer_count;             /* blocks to transfer */
 DWORD length;
-uint32_t block_offset;            /* current block offset*/
 
-uint8_t  BulkStage;               /* Bulk Stage */
+uint8_t  volatile BulkStage;      /* Bulk Stage */
 
-uint8_t  BulkBuf[MSC_MAX_PACKET]; /* Bulk In/Out Buffer */
-uint8_t  block_cache[MSC_BLOCK_SIZE];
-uint8_t  BulkLen;                 /* Bulk In/Out Length */
+uint8_t   BulkBuf[MSC_MAX_PACKET]  __attribute__((section("AHBSRAM0"), aligned(4))) = {0};
+uint32_t  BulkLen;                 /* Bulk In/Out Length */
 Sense sense_data;
 
-#define CMD_NONE   0
-#define CMD_START  1
-#define CMD_READ   2
-#define CMD_WRITE  3
-volatile uint8_t deferred_cmd = 0;
-volatile uint32_t missed_ops = 0;
-#define CACHE_INVALID  0xffffffff
-volatile DWORD cache_lba = CACHE_INVALID;
-
-MSC_CBW CBW;                   /* Command Block Wrapper */
-MSC_CSW CSW;                   /* Command Status Wrapper */
+MSC_CBW CBW  __attribute__((section("AHBSRAM0"), aligned(4))) = {0};  /* Command Block Wrapper */
+MSC_CSW CSW  __attribute__((section("AHBSRAM0"), aligned(4))) = {0};  /* Command Status Wrapper */
 volatile uint8_t media_lock = 0;
 volatile bool device_wants_lock = false;
 volatile bool ep_in_stalled = false;
@@ -91,6 +99,7 @@ uint32_t MSC_Aquire_Lock() {
   NVIC_DisableIRQ(USB_IRQn);
   media_lock = DEVICE_LOCK;
   NVIC_EnableIRQ(USB_IRQn);
+  MSC_SD_Release(0);
   _DBG("Device MSC Lock\n");
   device_wants_lock = false;
   return 0;
@@ -100,10 +109,11 @@ uint32_t MSC_Release_Lock() {
   if(media_lock != DEVICE_LOCK) {
     return 0; // Didn't have lock
   }
-  media_lock = NO_LOCK;
-  if(disk_status(0) != STA_NOINIT) disk_ioctl(0, GET_SECTOR_COUNT, (void *)(&MSC_BlockCount));
+  MSC_SD_Init(0);
+  //if(disk_status(0) != STA_NOINIT) disk_ioctl(0, GET_SECTOR_COUNT, (void *)(&MSC_BlockCount));
   _DBG("Device MSC Unlock\n");
   NVIC_DisableIRQ(USB_IRQn);
+  media_lock = NO_LOCK;
   sense_data.set(Sense_KEY::UNIT_ATTENTION, Sense_ASC::MEDIA_CHANGED);
   NVIC_EnableIRQ(USB_IRQn);
   return 0;   // Released
@@ -133,8 +143,33 @@ uint32_t MSC_SD_Lock() {
 
 uint32_t MSC_SD_Release(uint8_t pdrv) {
   MSC_BlockCount = 0;
-  deferred_cmd = CMD_NONE;
   return 0;
+}
+
+bool MSC_CheckAvailable(void) {
+  if (MSC_BlockCount == 0)
+    sense_data.set(Sense_KEY::NOT_READY, Sense_ASC::MEDIUM_NOT_PRESENT, Sense_ASCQ::LOADABLE);
+  else if (media_lock == DEVICE_LOCK)
+    sense_data.set(Sense_KEY::NOT_READY, Sense_ASC::MEDIUM_NOT_PRESENT, Sense_ASCQ::REASON_UNKNOWN);
+  else if (device_wants_lock) {
+    sense_data.set(Sense_KEY::NOT_READY, Sense_ASC::MEDIUM_NOT_PRESENT, Sense_ASCQ::REASON_UNKNOWN);
+    // indicate the device can have the lock
+    media_lock = NO_LOCK;
+  }
+  else
+    return true;
+    //_DBG("Available fail\n");
+  CSW.bStatus = CSW_CMD_FAILED;
+  MSC_SetCSW();
+  return false;
+}
+
+bool host_get_lock(void) {
+  if (MSC_CheckAvailable()) {
+    media_lock = HOST_LOCK;
+    return true;
+  }
+  return false;
 }
 
 uint32_t MSC_SD_Init(uint8_t pdrv) {
@@ -159,9 +194,28 @@ void MSC_Start() {
   MSC_SetCSW();
 }
 
-void MSC_DeferCommand(uint8_t cmd) {
-  deferred_cmd = cmd;
+static void MSC_QueueDMAIO(uint32_t EPNum, uint8_t *pData, uint32_t cnt) {
+  //_DBG("DMA IO "); _DBD32((uint32_t) pData); _DBG(" "); _DBD32(cnt); _DBG("\n");
+  USB_DMA_DESCRIPTOR desc;
+  desc.BufAdr = (uint32_t) pData;
+  desc.BufLen = cnt;
+  desc.MaxSize = (cnt > 0 ? MSC_MAX_PACKET : 0);
+  desc.InfoAdr = 0;
+  desc.Cfg.Val = 0;
+  USB_DMA_Setup(EPNum, &desc);
 }
+
+static void MSC_InitBuffers()
+{
+  for(int32_t i = 0; i < MSC_IO_BUFFERS; i++) {
+    Buffers[i].buffer = &IOBufferSpace[MSC_IO_BUFFER_SIZE*i];
+    Buffers[i].contents = BUFFER_EMPTY;
+    Buffers[i].length = 0;
+  }
+  BufferIn = 0;
+  BufferOut = 0;
+}
+
 
 #define STARTSTOP_STOPMOTOR        0x0
 #define STARTSTOP_STARTMOTOR       0x1
@@ -176,11 +230,8 @@ void MSC_StartStopUnit() {
       _DBG("OS Media Ejected UNLOCK\n");
       break;
     case STARTSTOP_LOAD:
-      if(MSC_BlockCount == 0) {
-        MSC_DeferCommand(CMD_START);
+      if (!host_get_lock())
         return;
-      }
-      media_lock = HOST_LOCK;
       _DBG("OS Media Mount LOCKED\n");
       break;
     default:
@@ -201,8 +252,10 @@ void MSC_StartStopUnit() {
  */
 
 uint32_t MSC_Reset (void) {
+  _DBG("MSC_Reset state "); _DBD32(BulkStage); _DBG("\n");
   BulkStage = MSC_BS_CBW;
   ep_in_stalled = false;
+  USB_DMA_Enable(MSC_EP_OUT);
   return (TRUE);
 }
 
@@ -217,13 +270,14 @@ void MSC_UnstallEP(uint32_t EPNum) {
   if ((EPNum == MSC_EP_IN) && ep_in_stalled) {
     /* Compliance Test: rewrite CSW after unstall */
     if (CSW.dSignature == MSC_CSW_Signature) {
-      USB_WriteEP(MSC_EP_IN, (uint8_t *) &CSW, sizeof(CSW));
+      MSC_QueueDMAIO(MSC_EP_IN, (uint8_t *)&CSW, sizeof(CSW));
     }
     ep_in_stalled = false;
   }
 }
 
 void MSC_StallEP(uint32_t EPNum) {
+  //_DBG("Stall EP\n");
   USB_SetStallEP(EPNum);
   // keep track of the stall state of the IN EP.
   if (EPNum == MSC_EP_IN)
@@ -243,54 +297,6 @@ uint32_t MSC_GetMaxLUN (void) {
   return (TRUE);
 }
 
-bool MSC_CheckAvailable(void) {
-  if (MSC_BlockCount == 0)
-    sense_data.set(Sense_KEY::NOT_READY, Sense_ASC::MEDIUM_NOT_PRESENT, Sense_ASCQ::LOADABLE);
-  else if (media_lock == DEVICE_LOCK)
-    sense_data.set(Sense_KEY::NOT_READY, Sense_ASC::MEDIUM_NOT_PRESENT, Sense_ASCQ::REASON_UNKNOWN);
-  else if (device_wants_lock) {
-    sense_data.set(Sense_KEY::NOT_READY, Sense_ASC::MEDIUM_NOT_PRESENT, Sense_ASCQ::REASON_UNKNOWN);
-    // indicate the device can have the lock
-    media_lock = NO_LOCK;
-  }
-  else
-    return true;
-  CSW.bStatus = CSW_CMD_FAILED;
-  MSC_SetCSW();
-  return false;
-}
-
-bool host_get_lock(void) {
-  if (MSC_CheckAvailable()) {
-    media_lock = HOST_LOCK;
-    return true;
-  }
-  return false;
-}
-
-static void MSC_CompleteRead (void) {
-  uint32_t n = (length > MSC_MAX_PACKET) ? MSC_MAX_PACKET : length;
-  USB_WriteEP(MSC_EP_IN, &block_cache[block_offset], n);
-
-  block_offset += n;
-  length -= n;
-  CSW.dDataResidue -= n;
-
-  if(block_offset >= MSC_BLOCK_SIZE) {
-    block_offset = 0;
-    ++lba;
-  }
-
-  if (length == 0) {
-    BulkStage = MSC_BS_DATA_IN_LAST;
-  }
-
-  if (BulkStage != MSC_BS_DATA_IN) {
-    CSW.bStatus = CSW_CMD_PASSED;
-    sense_data.reset();
-  }
-}
-
 /*
  *  MSC Memory Read Callback
  *   Called automatically on Memory Read Event
@@ -298,45 +304,28 @@ static void MSC_CompleteRead (void) {
  *    Return Value:    None
  */
 void MSC_MemoryRead (void) {
-  if (deferred_cmd != CMD_NONE){
-    return;
-  }
   if(!host_get_lock()) {
+    _DBG("Lock failed\n");
      return;
   }
   WDT_Feed();
-
-  if (lba > MSC_BlockCount) {
-    _DBG("Invalid LBA\n");
-  }
-
-  if(lba != cache_lba) {
-    MSC_DeferCommand(CMD_READ);
+  IOBuffer& buf = Buffers[BufferOut];
+  if (buf.contents == BUFFER_EMPTY) {
     return;
   }
-  MSC_CompleteRead();
-}
+  MSC_QueueDMAIO(MSC_EP_IN, buf.buffer, buf.length);
+  CSW.dDataResidue -= buf.length;
+  length -= buf.length;
 
-
-/*
- * Complete the write operation. May be called folowing a
- * deferred operation.
- */
-static void MSC_CompleteWrite(void) {
-  block_offset += BulkLen;
-  length -= BulkLen;
-  CSW.dDataResidue -= BulkLen;
-
-  if(block_offset >= MSC_BLOCK_SIZE) {
-    block_offset = 0;
-    ++lba;
+  if (length == 0) {
+    BulkStage = MSC_BS_DATA_LAST;
   }
 
-  if ((length == 0) || (BulkStage == MSC_BS_CSW)) {
+  if (BulkStage != MSC_BS_DATA_IN) {
     CSW.bStatus = CSW_CMD_PASSED;
     sense_data.reset();
-    MSC_SetCSW();
   }
+
 }
 
 /*
@@ -347,27 +336,22 @@ static void MSC_CompleteWrite(void) {
  */
 
 void MSC_MemoryWrite (void) {
-  if (deferred_cmd != CMD_NONE) {
-    missed_ops++;
-    return;
-  }
-  BulkLen = (uint8_t)USB_ReadEP(MSC_EP_OUT, BulkBuf);
   if(!host_get_lock()) {
      return;
   }
   WDT_Feed();
-  for (uint32_t n = 0; n < BulkLen; n++) {
-    block_cache[block_offset + n] = BulkBuf[n];
+  IOBuffer& buf = Buffers[BufferIn];
+  buf.contents = lba;
+  buf.length = BulkLen;
+  lba += (BulkLen/MSC_BLOCK_SIZE);
+  BufferIn = (BufferIn + 1) % MSC_IO_BUFFERS;
+  length -= BulkLen;
+  CSW.dDataResidue -= BulkLen;
+  if (length == 0) {
+    CSW.bStatus = CSW_CMD_PASSED;
+    sense_data.reset();
+    BulkStage = MSC_BS_DATA_FLUSH;
   }
-
-  if(block_offset + BulkLen >= MSC_BLOCK_SIZE) {
-    cache_lba = lba;
-    if(!(disk_status(0) & STA_PROTECT)){
-      MSC_DeferCommand(CMD_WRITE);
-      return;
-    }
-  }
-  MSC_CompleteWrite();
 }
 
 
@@ -379,18 +363,14 @@ void MSC_MemoryWrite (void) {
  */
 
 void MSC_MemoryVerify (void) {
-  BulkLen = (uint8_t)USB_ReadEP(MSC_EP_OUT, BulkBuf);
   if(!host_get_lock()) {
      return;
   }
   WDT_Feed();
-
-
-  block_offset += BulkLen;
   length -= BulkLen;
   CSW.dDataResidue -= BulkLen;
 
-  if ((length == 0) || (BulkStage == MSC_BS_CSW)) {
+  if (length == 0) {
     if(MemOK) {
       CSW.bStatus = CSW_CMD_PASSED;
       sense_data.reset();
@@ -405,36 +385,55 @@ void MSC_MemoryVerify (void) {
 /*
  * MSC_RunDeferredCommands
  * Called to allow comands that access shared hardware to run outside
- * of an interrupt context. hould be called from "main loop" of the
+ * of an interrupt context. Should be called from "main loop" of the
  * user program.
  */
 void MSC_RunDeferredCommands() {
-  uint8_t cmd = deferred_cmd;
-  if (cmd == CMD_NONE) return;
-  NVIC_DisableIRQ(USB_IRQn);
-  deferred_cmd = CMD_NONE;
-  switch(cmd) {
-    case CMD_NONE:
-      break;
-    case CMD_START:
-      MSC_Start();
-      break;
-    case CMD_READ:
-      disk_read (0, block_cache, lba, 1);
-      cache_lba = lba;
-      MSC_CompleteRead();
-      break;
-    case CMD_WRITE:
-      disk_write(0, block_cache, cache_lba, 1);
-      MSC_CompleteWrite();
-      if (missed_ops > 0) {
-        MSC_MemoryWrite();
-        missed_ops = 0;
+  for (int i =0; i < MSC_IO_BUFFERS; i++) {
+    switch(BulkStage) {
+      case MSC_BS_DATA_IN: {
+        IOBuffer& buf = Buffers[BufferIn];
+        if (buf.contents == BUFFER_EMPTY && transfer_count > 0) {
+          //_DBG("Read "); _DBD32(lba); _DBG(" cnt "); _DBD(transfer_count); _DBG(" in "); _DBD32(BufferIn); _DBG("\n");
+          uint32_t bcnt = (transfer_count > MSC_IO_BUFFER_SIZE/MSC_BLOCK_SIZE ? MSC_IO_BUFFER_SIZE/MSC_BLOCK_SIZE : transfer_count);
+          disk_read (0, buf.buffer, lba, bcnt);
+          buf.length = bcnt*MSC_BLOCK_SIZE;
+          buf.contents = lba;
+          lba += bcnt;
+          transfer_count -= bcnt;
+          BufferIn = (BufferIn + 1) % MSC_IO_BUFFERS;
+          USB_DMA_Enable(MSC_EP_IN);
+        }
+        else
+          return;
+        break;
       }
-      break;
+      case MSC_BS_DATA_FLUSH:
+      case MSC_BS_DATA_OUT: {
+        IOBuffer& buf = Buffers[BufferOut];
+        if (buf.contents != BUFFER_EMPTY && transfer_count > 0) {
+          uint32_t bcnt = buf.length/MSC_BLOCK_SIZE;
+          disk_write(0, buf.buffer, buf.contents, bcnt);
+          buf.contents = BUFFER_EMPTY;
+          BufferOut = (BufferOut + 1) % MSC_IO_BUFFERS;
+          transfer_count -= bcnt;
+          if (transfer_count == 0) {
+            BulkStage = MSC_BS_DATA_LAST;
+            USB_DMA_Enable(MSC_EP_IN);
+          }
+          else
+            USB_DMA_Enable(MSC_EP_OUT);
+        }
+        else
+          return;
+        break;
+      }
+      default:
+        return;
+    }
   }
-  NVIC_EnableIRQ(USB_IRQn);
 }
+
 
 /*
  *  MSC SCSI Read/Write Setup Callback
@@ -443,7 +442,6 @@ void MSC_RunDeferredCommands() {
  */
 
 uint32_t MSC_RWSetup (void) {
-  uint32_t n;
 
   /* Logical Block Address of First Block */
   lba = (CBW.CB[2] << 24) |
@@ -455,14 +453,15 @@ uint32_t MSC_RWSetup (void) {
   transfer_count = (CBW.CB[7] <<  8) |
                    (CBW.CB[8] <<  0);
 
-  block_offset = 0;
-  length = transfer_count * MSC_BLOCK_SIZE;
 
+  length = transfer_count * MSC_BLOCK_SIZE;
   if (CBW.dDataLength != (transfer_count * MSC_BLOCK_SIZE)) {
     CSW.bStatus = CSW_PHASE_ERROR;
     MSC_SetCSW();
     return (FALSE);
   }
+  MSC_InitBuffers();
+  //_DBG("R/W LBA "); _DBD32(lba); _DBG(" len "); _DBD32(length);
   return (TRUE);
 }
 
@@ -485,6 +484,7 @@ uint32_t DataInFormat (void) {
     MSC_SetCSW();
     return (FALSE);
   }
+  //_DBG("Data in ok\n");
   return (TRUE);
 }
 
@@ -500,8 +500,8 @@ void DataInTransfer (void) {
     BulkLen = CBW.dDataLength;
   }
 
-  USB_WriteEP(MSC_EP_IN, BulkBuf, BulkLen);
-  BulkStage = MSC_BS_DATA_IN_LAST;
+  MSC_QueueDMAIO(MSC_EP_IN, BulkBuf, BulkLen);
+  BulkStage = MSC_BS_DATA_LAST;
 
   CSW.dDataResidue -= BulkLen;
   CSW.bStatus = CSW_CMD_PASSED;
@@ -734,11 +734,6 @@ void MSC_ReadFormatCapacity (void) {
  */
 
 void MSC_GetCBW (void) {
-  uint32_t n;
-
-  for (n = 0; n < BulkLen; n++) {
-    *((uint8_t *)&CBW + n) = BulkBuf[n];
-  }
   if ((BulkLen == sizeof(CBW)) && (CBW.dSignature == MSC_CBW_Signature)) {
     /* Valid CBW */
     CSW.dTag = CBW.dTag;
@@ -751,6 +746,7 @@ fail: CSW.bStatus = CSW_CMD_FAILED;
       _DBH(CBW.CB[0]);
       _DBG("\n");
     } else {
+      //_DBG("CBW "); _DBD32(CBW.CB[0]); _DBG("\n");
       switch (CBW.CB[0]) {
         case SCSI_TEST_UNIT_READY:
           MSC_TestUnitReady();
@@ -851,7 +847,7 @@ fail: CSW.bStatus = CSW_CMD_FAILED;
  */
 
 void MSC_SetCSW (void) {
-  uint32_t sep;
+
   BulkStage = MSC_BS_CSW;
   CSW.dSignature = MSC_CSW_Signature;
   // Stall endpoint if required see: http://www.usb.org/developers/docs/devclass_docs/usbmassbulk_10.pdf
@@ -866,8 +862,7 @@ void MSC_SetCSW (void) {
   if (CSW.bStatus == CSW_PHASE_ERROR) {
     MSC_StallEP(MSC_EP_IN);
   }
-
-  USB_WriteEP(MSC_EP_IN, (uint8_t *)&CSW, sizeof(CSW));
+  MSC_QueueDMAIO(MSC_EP_IN, (uint8_t *)&CSW, sizeof(CSW));
 }
 
 
@@ -878,6 +873,7 @@ void MSC_SetCSW (void) {
  */
 
 void MSC_BulkIn (void) {
+  //_DBG("Bulkin "); _DBH(BulkStage); _DBG("\n");
   switch (BulkStage) {
     case MSC_BS_DATA_IN:
       switch (CBW.CB[0]) {
@@ -886,15 +882,12 @@ void MSC_BulkIn (void) {
           break;
       }
       break;
-    case MSC_BS_DATA_IN_LAST:
-      MSC_SetCSW();
-      break;
-    case MSC_BS_DATA_IN_LAST_STALL:
-      MSC_StallEP(MSC_EP_IN);
+    case MSC_BS_DATA_LAST:
       MSC_SetCSW();
       break;
     case MSC_BS_CSW:
       BulkStage = MSC_BS_CBW;
+      USB_DMA_Enable(MSC_EP_OUT);
       break;
   }
 }
@@ -907,15 +900,10 @@ void MSC_BulkIn (void) {
  */
 
 void MSC_BulkOut (void) {
+  BulkLen = USB_DMA_BufCnt(MSC_EP_OUT);
+  //_DBG("Bulkout "); _DBH(BulkStage); _DBG("\n");
   switch (BulkStage) {
-    case MSC_BS_CSW:
-      // This phase will normally coincide with a BulkIn request. However
-      // if interrupts are delayed then the the order of BulkIn/BulkOut
-      // requests is not guaranteed. So we also handle it here.
-      BulkStage = MSC_BS_CBW;
-      /* FALLTHROUGH */
     case MSC_BS_CBW:
-      BulkLen = (uint8_t)USB_ReadEP(MSC_EP_OUT, BulkBuf);
       MSC_GetCBW();
       break;
     case MSC_BS_DATA_OUT:
@@ -932,11 +920,55 @@ void MSC_BulkOut (void) {
       break;
     default:
       _DBG("BO Phase error ");_DBD32(BulkStage); _DBG("\n");
-      BulkLen = (uint8_t)USB_ReadEP(MSC_EP_OUT, BulkBuf);
       _DBG("Data len "); _DBD32(BulkLen); _DBG("\n");
       MSC_StallEP(MSC_EP_OUT);
       CSW.bStatus = CSW_PHASE_ERROR;
       MSC_SetCSW();
+      break;
+  }
+}
+
+/*
+ *  MSC DMA event call back
+ *    Parameters:      DMA I/O event
+ *    Return Value:    None
+ */
+void MSC_DMA (uint32_t event) {
+  //_DBG("DMA event "); _DBD32(event); _DBG(" "); _DBD32(USB_DMA_Status(MSC_EP_IN)); _DBG("\n");
+
+  switch(event) {
+    case USB_EVT_IN_DMA_EOT:
+      if (BulkStage == MSC_BS_DATA_IN) {
+        // I/O complete mark buffer as available
+        Buffers[BufferOut].contents = BUFFER_EMPTY;
+        BufferOut = (BufferOut + 1) % MSC_IO_BUFFERS;
+      }
+      break;
+    case USB_EVT_IN_DMA_NDR:
+      MSC_BulkIn();
+      break;
+    case USB_EVT_IN_DMA_ERR:
+      _DBG("Error in "); _DBD32(USB_DMA_Status(MSC_EP_IN)); _DBG("\n");
+      break;
+    case USB_EVT_OUT_DMA_EOT:
+      MSC_BulkOut();
+      break;
+    case USB_EVT_OUT_DMA_NDR:
+      switch(BulkStage) {
+        case MSC_BS_DATA_OUT:
+          if (Buffers[BufferIn].contents == BUFFER_EMPTY)
+            MSC_QueueDMAIO(MSC_EP_OUT, Buffers[BufferIn].buffer, (length > MSC_IO_BUFFER_SIZE ? MSC_IO_BUFFER_SIZE : length));
+          break;
+        case MSC_BS_CBW:
+          MSC_QueueDMAIO(MSC_EP_OUT, (uint8_t *)&CBW, sizeof(CBW));
+          break;
+        default:
+          _DBG("Unexpected state "); _DBD32(BulkStage); _DBG("\n");
+          break;
+      }
+      break;
+    case USB_EVT_OUT_DMA_ERR:
+      _DBG("Error out "); _DBD32(USB_DMA_Status(MSC_EP_OUT)); _DBG("\n");
       break;
   }
 }

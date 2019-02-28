@@ -21,6 +21,7 @@
  *----------------------------------------------------------------------------*/
 extern "C" {
 #include "LPC17xx.h"                        /* LPC17xx definitions */
+#include <debug_frmwrk.h>
 }
 
 #include "usb.h"
@@ -36,9 +37,10 @@ extern "C" {
 #define EP_MSK_ISO  0x1248      /* Isochronous Endpoint Logical Address Mask */
 
 #if USB_DMA
-uint32_t UDCA[USB_EP_NUM] __attribute__((section("USB_RAM")));        /* UDCA in USB RAM */
-uint32_t DD_NISO_Mem[4*DD_NISO_CNT] __attribute__((section("USB_RAM")));    /* Non-Iso DMA Descriptor Memory */
-uint32_t DD_ISO_Mem [5*DD_ISO_CNT] __attribute__((section("USB_RAM")));     /* Iso DMA Descriptor Memory */
+uint32_t volatile UDCA[USB_EP_NUM] __attribute__((section("AHBSRAM0"), aligned(128))) = {0};        /* UDCA in USB RAM */
+//uint32_t volatile *UDCA = (uint32_t *)USB_RAM_ADR;
+uint32_t DD_NISO_Mem[4*DD_NISO_CNT] __attribute__((section("AHBSRAM0"))) = {0};    /* Non-Iso DMA Descriptor Memory */
+uint32_t DD_ISO_Mem [5*DD_ISO_CNT] __attribute__((section("AHBSRAM0"))) = {0};     /* Iso DMA Descriptor Memory */
 uint32_t udca[USB_EP_NUM];                                    /* UDCA saved values */
 uint32_t DDMemMap[2];
 #endif
@@ -182,7 +184,6 @@ void USB_Reset (void) {
 #if USB_DMA
   uint32_t n;
 #endif
-
   LPC_USB->USBEpInd = 0;
   LPC_USB->USBMaxPSize = USB_MAX_PACKET0;
   LPC_USB->USBEpInd = 1;
@@ -196,9 +197,10 @@ void USB_Reset (void) {
                (USB_SOF_EVENT   ? FRAME_INT : 0) |
                (USB_ERROR_EVENT ? ERR_INT   : 0);
 
+  WrCmdDat(CMD_SET_MODE, DAT_WR_BYTE(INAK_BI));
 
 #if USB_DMA
-  LPC_USB->USBUDCAH   = USB_RAM_ADR;
+  LPC_USB->USBUDCAH   = (uint32_t)&UDCA[0];
   LPC_USB->USBDMARClr = 0xFFFFFFFF;
   LPC_USB->USBEpDMADis  = 0xFFFFFFFF;
   LPC_USB->USBEpDMAEn   = USB_DMA_EP;
@@ -476,7 +478,7 @@ void USB_SetInterruptEP(uint32_t EPNum)
 #if USB_DMA
 
 /* DMA Descriptor Memory Layout */
-const uint32_t DDAdr[2] = { DD_NISO_ADR, DD_ISO_ADR };
+const uint32_t DDAdr[2] = { (uint32_t)DD_NISO_Mem, (uint32_t)DD_ISO_Mem };
 const uint32_t DDSz [2] = { 16,          20         };
 
 
@@ -486,43 +488,34 @@ const uint32_t DDSz [2] = { 16,          20         };
  *                     pDD: Pointer to DMA Descriptor
  *    Return Value:    TRUE - Success, FALSE - Error
  */
-
 uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD) {
-  uint32_t num, ptr, nxt, iso, n;
+  uint32_t num, nxt, iso, n, active;
+  uint32_t * nxt_ptr;
 
   iso = pDD->Cfg.Type.IsoEP;                /* Iso or Non-Iso Descriptor */
   num = EPAdr(EPNum);                       /* Endpoint's Physical Address */
-
-  ptr = 0;                                  /* Current Descriptor */
-  nxt = udca[num];                          /* Initial Descriptor */
-  while (nxt) {                             /* Go through Descriptor List */
-    ptr = nxt;                              /* Current Descriptor */
-    if (!pDD->Cfg.Type.Link) {              /* Check for Linked Descriptors */
-      n = (ptr - DDAdr[iso]) / DDSz[iso];   /* Descriptor Index */
-      DDMemMap[iso] &= ~(1 << n);           /* Unmark Memory Usage */
-    }
-    nxt = *((uint32_t *)ptr);                  /* Next Descriptor */
-  }
 
   for (n = 0; n < 32; n++) {                /* Search for available Memory */
     if ((DDMemMap[iso] & (1 << n)) == 0) {
       break;                                /* Memory found */
     }
   }
-  if (n == 32) return (FALSE);              /* Memory not available */
-
+  if (n == 32) {
+    return (FALSE);              /* Memory not available */
+  }
   DDMemMap[iso] |= 1 << n;                  /* Mark Memory Usage */
   nxt = DDAdr[iso] + n * DDSz[iso];         /* Next Descriptor */
 
-  if (ptr && pDD->Cfg.Type.Link) {
-    *((uint32_t *)(ptr + 0))  = nxt;           /* Link in new Descriptor */
-    *((uint32_t *)(ptr + 4)) |= 0x00000004;    /* Next DD is Valid */
-  } else {
-    udca[num] = nxt;                        /* Save new Descriptor */
-    UDCA[num] = nxt;                        /* Update UDCA in USB */
+  active = udca[num];                          /* Initial Descriptor */
+  // move through list freeing all descriptors that have been processed
+  while (active) {                             /* Go through Descriptor List */
+    uint32_t *active_ptr = (uint32_t *)active;
+    n = (active - DDAdr[iso]) / DDSz[iso];   /* Descriptor Index */
+    DDMemMap[iso] &= ~(1 << n);           /* Unmark Memory Usage */
+    active = *active_ptr;                  /* Next Descriptor */
   }
 
-  uint32_t * nxt_ptr = (uint32_t *)nxt;
+  nxt_ptr = (uint32_t *)nxt;
   /* Fill in DMA Descriptor */
   *nxt_ptr++ =  0;   /* Next DD Pointer */
   *nxt_ptr++ = (pDD->Cfg.Type.ATLE) |
@@ -534,7 +527,9 @@ uint32_t USB_DMA_Setup(uint32_t EPNum, USB_DMA_DESCRIPTOR *pDD) {
   if (iso) {
     *nxt_ptr =  pDD->InfoAdr;
   }
-
+  udca[num] = nxt;                        /* Save new Descriptor */
+  UDCA[num] = nxt;                        /* Update UDCA in USB */
+  USB_DMA_Enable(EPNum);
   return (TRUE); /* Success */
 }
 
@@ -564,7 +559,6 @@ void USB_DMA_Disable (uint32_t EPNum) {
   LPC_USB->USBEpDMADis = 1 << EPAdr(EPNum);
 }
 
-
 /*
  *  Get USB DMA Endpoint Status
  *    Parameters:      EPNum: Endpoint Number
@@ -578,7 +572,6 @@ uint32_t USB_DMA_Status (uint32_t EPNum) {
 
   ptr = UDCA[EPAdr(EPNum)];                 /* Current Descriptor */
   if (ptr == 0) return (USB_DMA_INVALID);
-
   val = *((uint32_t *)(ptr + 3*4));            /* Status Information */
   switch ((val >> 1) & 0x0F) {
     case 0x00:                              /* Not serviced */
@@ -657,13 +650,11 @@ uint32_t USB_GetFrame (void) {
 /*
  *  USB Interrupt Service Routine
  */
-
 void USB_IRQHandler (void) {
   uint32_t disr, val, n, m;
   uint32_t episr, episrCur;
 
   disr = LPC_USB->USBDevIntSt;       /* Device Interrupt Status */
-
   /* Device Status Interrupt (Reset, Connect change, Suspend/Resume) */
   if (disr & DEV_STAT_INT) {
     LPC_USB->USBDevIntClr = DEV_STAT_INT;
@@ -754,6 +745,7 @@ void USB_IRQHandler (void) {
 
   if (LPC_USB->USBDMAIntSt & 0x00000001) {          /* End of Transfer Interrupt */
     val = LPC_USB->USBEoTIntSt;
+    LPC_USB->USBEoTIntClr = val;
     for (n = 2; n < USB_EP_NUM; n++) {      /* Check All Endpoints */
       if (val & (1 << n)) {
         m = n >> 1;
@@ -768,11 +760,11 @@ void USB_IRQHandler (void) {
         }
       }
     }
-    LPC_USB->USBEoTIntClr = val;
   }
 
   if (LPC_USB->USBDMAIntSt & 0x00000002) {          /* New DD Request Interrupt */
     val = LPC_USB->USBNDDRIntSt;
+    LPC_USB->USBNDDRIntClr = val;
     for (n = 2; n < USB_EP_NUM; n++) {      /* Check All Endpoints */
       if (val & (1 << n)) {
         m = n >> 1;
@@ -787,11 +779,11 @@ void USB_IRQHandler (void) {
         }
       }
     }
-    LPC_USB->USBNDDRIntClr = val;
   }
 
   if (LPC_USB->USBDMAIntSt & 0x00000004) {          /* System Error Interrupt */
     val = LPC_USB->USBSysErrIntSt;
+    LPC_USB->USBSysErrIntClr = val;
     for (n = 2; n < USB_EP_NUM; n++) {      /* Check All Endpoints */
       if (val & (1 << n)) {
         m = n >> 1;
@@ -806,7 +798,6 @@ void USB_IRQHandler (void) {
         }
       }
     }
-    LPC_USB->USBSysErrIntClr = val;
   }
 
 #endif /* USB_DMA */

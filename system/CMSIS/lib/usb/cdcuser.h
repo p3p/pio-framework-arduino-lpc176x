@@ -18,11 +18,9 @@
 
 #ifndef __CDCUSER_H__
 #define __CDCUSER_H__
-
-/* CDC buffer handling */
-extern uint32_t CDC_RdOutBuf(char *buffer, const uint32_t *length);
-extern uint32_t CDC_WrOutBuf(const char *buffer, uint32_t *length);
-extern uint32_t CDC_OutBufAvailChar(uint32_t *availChar);
+extern "C" {
+#include <debug_frmwrk.h>
+}
 
 /* CDC Data In/Out Endpoint Address */
 #define CDC_DEP_IN       0x82
@@ -30,6 +28,10 @@ extern uint32_t CDC_OutBufAvailChar(uint32_t *availChar);
 
 /* CDC Communication In Endpoint Address */
 #define CDC_CEP_IN       0x81
+
+// I/O Buffer states
+#define CDC_BUFFER_EMPTY 0xffffffff
+#define CDC_BUFFER_WAITING 0xfffffffe
 
 /* CDC Requests Callback Functions */
 extern uint32_t CDC_SendEncapsulatedCommand(void);
@@ -45,6 +47,7 @@ extern uint32_t CDC_SendBreak(unsigned short wDurationOfBreak);
 /* CDC Bulk Callback Functions */
 extern void CDC_BulkIn(void);
 extern void CDC_BulkOut(void);
+extern void CDC_DMA (uint32_t event);
 
 /* CDC Notification Callback Function */
 extern void CDC_NotificationIn(void);
@@ -58,11 +61,18 @@ extern void CDC_Reset();
 /* CDC prepare the SERAIAL_STATE */
 extern unsigned short CDC_GetSerialState(void);
 
-/* flow control */
-extern unsigned short CDC_DepInEmpty;         // DataEndPoint IN empty
+extern volatile uint32_t CDC_InContents;
 __inline void CDC_FlushBuffer() {
-  if (CDC_DepInEmpty)
-    USB_SetInterruptEP(CDC_DEP_IN);
+  if (CDC_InContents == CDC_BUFFER_EMPTY)
+    USB_DMA_Enable(CDC_DEP_IN);
+}
+
+extern volatile uint32_t CDC_OutContents;
+extern void CDC_WrOutBuf();
+__inline void CDC_FillBuffer(uint32_t available) {
+  if (available >= CDC_OutContents) {
+    CDC_WrOutBuf();
+    USB_DMA_Enable(CDC_DEP_OUT);
+  }
 }
 #endif  /* __CDCUSER_H__ */
-
