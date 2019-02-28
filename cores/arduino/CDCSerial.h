@@ -47,13 +47,13 @@ template <typename T, uint32_t S> class RingBuffer {
 public:
   RingBuffer() {index_read = index_write = 0;}
 
-  uint32_t available() {return mask(index_write - index_read);}
-  uint32_t free() {return buffer_size - available() - 1;}
-  bool empty() {return index_read == index_write;}
-  bool full() {return next(index_write) == index_read;}
+  uint32_t available() const {return mask(index_write - index_read);}
+  uint32_t free() const {return size() - available();}
+  bool empty() const {return index_read == index_write;}
+  bool full() const {return next(index_write) == index_read;}
   void clear() {index_read = index_write = 0;}
 
-  bool peek(T *const value) {
+  bool peek(T *const value) const {
     if (value == nullptr || empty()) return false;
     *value = buffer[index_read];
     return true;
@@ -66,7 +66,7 @@ public:
     return 1;
   }
 
-  uint32_t write(T value) {
+  uint32_t write(const T value) {
     uint32_t next_head = next(index_write);
     if (next_head == index_read) return 0;     // buffer full
     buffer[index_write] = value;
@@ -74,12 +74,16 @@ public:
     return 1;
   }
 
+  constexpr uint32_t size() const {
+    return buffer_size - 1;
+  }
+
 private:
-  inline uint32_t mask(uint32_t val) {
+  inline uint32_t mask(uint32_t val) const {
     return val & buffer_mask;
   }
 
-  inline uint32_t next(uint32_t val) {
+  inline uint32_t next(uint32_t val) const {
     return mask(val + 1);
   }
 
