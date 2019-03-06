@@ -36,6 +36,9 @@ extern uint64_t _millis;
 void cli(void) { __disable_irq(); } // Disable
 void sei(void) { __enable_irq(); }  // Enable
 
+void noInterrupts() { __disable_irq(); } // Disable
+void interrupts() { __enable_irq(); }  // Enable
+
 // Time functions
 void _delay_ms(const int delay_ms) {
   delay(delay_ms);

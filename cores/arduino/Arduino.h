@@ -68,6 +68,9 @@ using std::isinf;
 //Interrupts
 void cli(void); // Disable
 void sei(void); // Enable
+void noInterrupts();
+void interrupts();
+
 void attachInterrupt(const pin_t pin, void (*callback)(void), uint32_t mode);
 void detachInterrupt(const pin_t pin);
 extern "C" void GpioEnableInt(uint32_t port, uint32_t pin, uint32_t mode);
