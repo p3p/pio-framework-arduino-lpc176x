@@ -15,19 +15,38 @@
  *
  */
 
+#include <lpc17xx_clkpwr.h>
 #include "HardwarePWM.h"
 uint32_t active_pwm_pins = 0;
+uint32_t idle_pwm_pins = 0;
 
 void pwm_hardware_init(const uint32_t prescale, const uint32_t period) {
-  // Reset and set up timing
-  LPC_PWM1->TCR  = util::bit_value(1);  // reset and hold timer
-  LPC_PWM1->PR   = prescale;
-  LPC_PWM1->MR0  = 1; //todo: if the period is set correctly here then the first set of match registers doesnt work, figure out why
-  // Configure PWM
-  LPC_PWM1->MCR  = util::bit_value(1);  // Configured to reset TC if it matches MR0, No interrupts
-  LPC_PWM1->CTCR = 0;                   // Set counters to increment on prescaled timer
-  // Disable all PWM outputs and enable PWM mode
-  LPC_PWM1->PCR  = 0;                             // PWM1 control of outputs off
-  LPC_PWM1->TCR  = util::bitset_value(0, 3);      // Enable counters, Turn on PWM
-  pwm_set_period(period);                         // set and latch in period
+
+  // Power on the peripheral
+  CLKPWR_ConfigPPWR (CLKPWR_PCONP_PCPWM1, ENABLE);
+  CLKPWR_SetPCLKDiv (CLKPWR_PCLKSEL_PWM1, CLKPWR_PCLKSEL_CCLK_DIV_4);
+
+  // Make sure it is in a clean state
+  LPC_PWM1->IR = 0xFF & PWM_IR_BITMASK;
+  LPC_PWM1->TCR = 0;
+  LPC_PWM1->CTCR = 0;
+  LPC_PWM1->MCR = 0;
+  LPC_PWM1->CCR = 0;
+  LPC_PWM1->PCR &= 0xFF00;
+  LPC_PWM1->LER = 0;
+
+  // Clock prescaler
+  LPC_PWM1->PR = prescale;
+
+  // Configured to reset TC if it matches MR0, No interrupts
+  LPC_PWM1->MCR = util::bit_value(1);
+
+  // Set the period using channel 0 before enabling peripheral
+  pwm_set_period(period);
+
+  // Enable PWM mode
+  // TODO: this is very unreliable appears to randomly miss latches thus not changing the duty cycle
+  // disabling PWM latch mode at least gives reliable (bit 3)
+  //LPC_PWM1->TCR = util::bitset_value(0, 3);      //  Turn on PWM latch mode and Enable counters
+  LPC_PWM1->TCR = util::bitset_value(0);
 }

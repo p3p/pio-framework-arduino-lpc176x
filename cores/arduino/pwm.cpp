@@ -25,17 +25,17 @@
 void pwm_init(void) {
   const uint32_t PR = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / 1000000) - 1;      // Prescalar to create 1 MHz output
   // Period defaulted to 20ms for compatibility with servos
-  // pwm_hardware_init(PR, 20000);
+  pwm_hardware_init(PR, 20000);
   SoftwarePWM.init(PR, 20000);
 }
 
 bool pwm_attach_pin(const pin_t pin, const uint32_t value) {
   // Hardware PWM
-  // if(pwm_pin_active(pin)) return true;                         // already attached to hardware channel?
-  // if(LPC1768_PIN_PWM(pin) && !pwm_channel_active(pin)) {       // hardware capable and channel requried by pin not in use,
-  //   pwm_hardware_attach(pin, value);
-  //   return true;
-  // }
+  if(pwm_pin_active(pin)) return true;                         // already attached to hardware channel?
+  if(LPC1768_PIN_PWM(pin) && !pwm_channel_active(pin)) {       // hardware capable and channel requried by pin not in use,
+    pwm_hardware_attach(pin, value);
+    return true;
+  }
 
   // Fall back on Timer3 based PWM
   if(SoftwarePWM.exists(pin)) return true; // already attached on software pin
@@ -49,28 +49,22 @@ bool pwm_attach_pin(const pin_t pin, const uint32_t value) {
 }
 
 bool pwm_attached(const pin_t pin) {
-  return /*pwm_pin_active(pin) ||*/ SoftwarePWM.exists(pin);
+  return pwm_pin_active(pin) || SoftwarePWM.exists(pin);
 }
 
 bool pwm_detach_pin(const pin_t pin) {
   // Hardware PWM capable pin and active
-  // if (pwm_pin_active(pin)) {
-  //   pin_enable_feature(pin, 0); // reenable gpio
-  //   pwm_deactivate_channel(pin);
-  //   return true;
-  // }
-
+  if (pwm_hardware_detach(pin)) return true;
   // Fall back on Timer3 based PWM
-  if(SoftwarePWM.remove(pin)) return true;
-  return false;
+  return SoftwarePWM.remove(pin);
 }
 
 bool pwm_write(const pin_t pin, const uint32_t value) {
   // Hardware pwm feature is active for pin
-  // if (pwm_pin_active(pin)) {
-  //   pwm_set_match(pin, value);
-  //   return true;
-  // }
+  if (pwm_pin_active(pin)) {
+    pwm_set_match(pin, value);
+    return true;
+  }
 
   // Fall back on Timer3 based PWM
   if(SoftwarePWM.update(pin, value)) return true;

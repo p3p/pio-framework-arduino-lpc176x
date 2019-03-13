@@ -104,13 +104,14 @@ template <typename Value, typename BitSet>
 
 template<typename T>
 [[nodiscard]] constexpr auto memory_ptr(const std::size_t loc) {
-  return reinterpret_cast<volatile T(*)>(loc);
+  return reinterpret_cast<volatile T*>(loc);
 }
 
-template<typename T>
-[[nodiscard]] constexpr auto& memory_ref(const std::size_t loc) {
-  return *reinterpret_cast<volatile T(*)>(loc);
-}
+// TODO: debug why this gets optimised away under some circumstances.
+// template<typename T>
+// [[nodiscard]] constexpr volatile T& memory_ref(const std::size_t loc) {
+//   return *reinterpret_cast<volatile T*>(loc);
+// }
 
 #define _BV(n) (1<<(n))
 #define TEST(n,b) !!((n)&_BV(b))
