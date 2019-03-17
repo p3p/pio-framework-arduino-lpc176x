@@ -23,17 +23,16 @@
 #include <time.h>
 
 void pwm_init(void) {
-  const uint32_t PR = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / 1000000) - 1;      // Prescalar to create 1 MHz output
-  // Period defaulted to 20ms for compatibility with servos
-  pwm_hardware_init(PR, 20000);
-  SoftwarePWM.init(PR, 20000);
+  // Period defaulted to 20ms (50Hz) for compatibility with servos
+  HardwarePWM::init(50);
+  SoftwarePWM.init(50);
 }
 
 bool pwm_attach_pin(const pin_t pin, const uint32_t value) {
   // Hardware PWM
-  if(pwm_pin_active(pin)) return true;                         // already attached to hardware channel?
-  if(LPC1768_PIN_PWM(pin) && !pwm_channel_active(pin)) {       // hardware capable and channel requried by pin not in use,
-    pwm_hardware_attach(pin, value);
+  if(HardwarePWM::pin_active(pin)) return true;                         // already attached to hardware channel?
+  if(LPC1768_PIN_PWM(pin) && !HardwarePWM::channel_active(pin)) {       // hardware capable and channel requried by pin not in use,
+    HardwarePWM::attach(pin, value);
     return true;
   }
 
@@ -49,20 +48,47 @@ bool pwm_attach_pin(const pin_t pin, const uint32_t value) {
 }
 
 bool pwm_attached(const pin_t pin) {
-  return pwm_pin_active(pin) || SoftwarePWM.exists(pin);
+  return HardwarePWM::pin_active(pin) || SoftwarePWM.exists(pin);
 }
 
 bool pwm_detach_pin(const pin_t pin) {
   // Hardware PWM capable pin and active
-  if (pwm_hardware_detach(pin)) return true;
+  if (HardwarePWM::detach(pin)) return true;
   // Fall back on Timer3 based PWM
   return SoftwarePWM.remove(pin);
 }
 
 bool pwm_write(const pin_t pin, const uint32_t value) {
   // Hardware pwm feature is active for pin
-  if (pwm_pin_active(pin)) {
-    pwm_set_match(pin, value);
+  if (HardwarePWM::pin_active(pin)) {
+    HardwarePWM::set_match(pin, value);
+    return true;
+  }
+
+  // Fall back on Timer3 based PWM
+  if(SoftwarePWM.update(pin, value)) return true;
+  return false;
+}
+
+uint32_t pwm_get_period(const pin_t pin) {
+  if (HardwarePWM::pin_active(pin)) {
+    return HardwarePWM::get_period();
+  }
+  return SoftwarePWM.get_period();
+}
+
+bool pwm_write_ratio(const pin_t pin, const uint8_t value) {
+  return pwm_write(pin, map(value, 0, 255, 0, pwm_get_period(pin)));
+}
+
+bool pwm_write_ratio(const pin_t pin, const float value) {
+  return pwm_write(pin, static_cast<float>(pwm_get_period(pin)) * (value > 1.0f ? 1.0 : (value < 0.0f ? 0.0f : value)));
+}
+
+bool pwm_write_us(const pin_t pin, const uint32_t value) {
+  // Hardware pwm feature is active for pin
+  if (HardwarePWM::pin_active(pin)) {
+    HardwarePWM::set_us(pin, value);
     return true;
   }
 

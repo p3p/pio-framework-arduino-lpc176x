@@ -125,9 +125,7 @@ void randomSeed(uint32_t);
 
 char *dtostrf (double __val, signed char __width, unsigned char __prec, char *__s);
 
-constexpr int map(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) {
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
+using util::map;
 
 void tone(const pin_t _pin, const uint32_t frequency, const uint32_t duration = 0);
 void noTone(const pin_t _pin);

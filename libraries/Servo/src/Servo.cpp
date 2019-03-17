@@ -105,11 +105,9 @@ void Servo::writeMicroseconds(int value) {
   if (channel < MAX_SERVOS) {  // ensure channel is valid
     // ensure pulse width is valid
     value = std::clamp(value, SERVO_MIN(), SERVO_MAX()) - (TRIM_DURATION);
-    value = US_TO_PULSE_WIDTH(value);  // convert to pulse_width after compensating for interrupt overhead - 12 Aug 2009
-
     servo_info[channel].pulse_width = value;
     pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr);
-    pwm_write(servo_info[this->servoIndex].Pin.nbr, value);
+    pwm_write_us(servo_info[this->servoIndex].Pin.nbr, value);
   }
 }
 

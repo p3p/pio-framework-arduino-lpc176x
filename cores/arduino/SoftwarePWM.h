@@ -18,6 +18,7 @@
 #ifndef _SOFTWARE_PWM_H_
 #define _SOFTWARE_PWM_H_
 
+#include <lpc17xx_clkpwr.h>
 #include <pinmapping.h>
 
 constexpr uint32_t PWM_MAX_SOFTWARE_CHANNELS = 20;
@@ -46,19 +47,28 @@ struct SoftwarePwmTable {
     }
   }
 
-  void init(const uint32_t prescale, const uint32_t period, const uint32_t int_priority = 2) {
+  void init(const uint32_t frequency, const uint32_t int_priority = 2) {
     // Setup timer for Timer3 Interrupt controlled PWM
     LPC_SC->PCONP |= 1 << 23;                 // power on timer3
-    LPC_TIM3->PR = prescale;                  // match PWM hardware prescaler
+    LPC_TIM3->PR = 0; // no prescaler
     LPC_TIM3->MCR = util::bitset_value(0, 1); // Interrupt on MR0, reset on MR0
-    LPC_TIM3->MR0 = period - 1;               // match PWM hardware period
+    LPC_TIM3->MR0 = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_TIMER3) / frequency) - 1; // set frequency
     LPC_TIM3->TCR = util::bit_value(0);       // enable the timer
 
     NVIC_SetPriority(TIMER3_IRQn, NVIC_EncodePriority(0, int_priority, 0));
   }
 
+  void set_frequency(const uint32_t frequency){
+    set_period(CLKPWR_GetPCLK(CLKPWR_PCLKSEL_TIMER3) / frequency);
+  }
+
   void set_period(const uint32_t period) {
     LPC_TIM3->MR0 = period - 1;
+    LPC_TIM3->TC = period - 2;
+  }
+
+  uint32_t get_period() {
+    return LPC_TIM3->MR0 + 1;
   }
 
   constexpr uint32_t size() {

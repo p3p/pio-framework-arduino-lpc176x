@@ -107,6 +107,10 @@ template<typename T>
   return reinterpret_cast<volatile T*>(loc);
 }
 
+[[nodiscard]] constexpr uint32_t map(uint32_t x, uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max) noexcept{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 // TODO: debug why this gets optimised away under some circumstances.
 // template<typename T>
 // [[nodiscard]] constexpr volatile T& memory_ref(const std::size_t loc) {

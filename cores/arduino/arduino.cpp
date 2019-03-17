@@ -116,7 +116,7 @@ void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255
 
   util::limit(pwm_value, 0, 255);
   if (pwm_attach_pin(pin)) {
-    pwm_write(pin, map(pwm_value, 0, 255, 0, 20000));  // map 1-254 onto PWM range
+    pwm_write_ratio(pin, (uint8_t)pwm_value);  // map 1-254 onto PWM range
   } else {
     digitalWrite(pin, pwm_value);  // treat as a digital pin if out of channels
   }

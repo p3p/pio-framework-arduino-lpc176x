@@ -23,6 +23,9 @@
 void pwm_init(void);
 bool pwm_attach_pin(const pin_t pin, const uint32_t value = 0);
 bool pwm_write(const pin_t pin, const uint32_t value);
+bool pwm_write_ratio(const pin_t pin, const uint8_t value);
+bool pwm_write_ratio(const pin_t pin, const float value);
+bool pwm_write_us(const pin_t pin, const uint32_t value);
 bool pwm_detach_pin(const pin_t pin);
 
 #endif // _LPC1768_PWM_H_
