@@ -67,6 +67,12 @@ class HardwarePWM {
     gpio_clear(pin);
   }
 
+    // return true if a pwm channel is already attached to a pin
+  [[nodiscard]] static constexpr bool channel_active(const pin_t pin) noexcept {
+    const uint32_t channel = LPC1768_PIN_PWM(pin) - 1;
+    return LPC1768_PIN_PWM(pin) && util::bitset_mask(active_pins, util::bitset_value(6 + channel, 2 * 6 + channel, 3 * 6 + channel));
+  }
+
 public:
   //static void init(const uint32_t prescale, const uint32_t period) {
   static void init(const uint32_t frequency) {
@@ -83,8 +89,8 @@ public:
     LPC_PWM1->PCR &= 0xFF00;
     LPC_PWM1->LER = 0;
 
-    // Clock prescaler
-    LPC_PWM1->PR = 0; // (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / 1000000) - 1; // Prescalar to create 1 MHz output
+    // No clock prescaler
+    LPC_PWM1->PR = 0;
 
     // Configured to reset TC if it matches MR0, No interrupts
     LPC_PWM1->MCR = util::bit_value(1);
@@ -100,14 +106,12 @@ public:
     LPC_PWM1->TCR = util::bitset_value(0);
   }
 
-  // return true if a pwm channel is already attached to a pin
-  [[nodiscard]] static constexpr bool channel_active(const pin_t pin) noexcept {
-    const uint32_t channel = LPC1768_PIN_PWM(pin) - 1;
-    return LPC1768_PIN_PWM(pin) && util::bitset_mask(active_pins, util::bitset_value(6 + channel, 2 * 6 + channel, 3 * 6 + channel));
+  [[nodiscard]] static constexpr bool available(const pin_t pin) noexcept {
+    return LPC1768_PIN_PWM(pin) && !channel_active(pin);
   }
 
   // return true if a pin is already attached to PWM hardware
-  [[nodiscard]] static constexpr bool pin_active(const pin_t pin) noexcept {
+  [[nodiscard]] static constexpr bool active(const pin_t pin) noexcept {
     return LPC1768_PIN_PWM(pin) && util::bit_test(active_pins, get_pin_id(pin));
   }
 
@@ -147,13 +151,15 @@ public:
     }
   }
 
-  static inline void attach(const pin_t pin, const uint32_t value) {
+  static inline bool attach(const pin_t pin, const uint32_t value) {
+    if(!available(pin)) return false;
     set_match(pin, value);
     activate_channel(pin);
+    return true;
   }
 
   static inline bool detach(const pin_t pin) {
-    if (pin_active(pin)) {
+    if (active(pin)) {
       pin_enable_feature(pin, 0); // reenable gpio
       gpio_clear(pin);
       deactivate_channel(pin);
