@@ -18,10 +18,11 @@
 #ifndef _SOFTWARE_PWM_H_
 #define _SOFTWARE_PWM_H_
 
+#include <lpc17xx_clkpwr.h>
 #include <pinmapping.h>
 
 constexpr uint32_t PWM_MAX_SOFTWARE_CHANNELS = 20;
-constexpr uint32_t PWM_MATCH_OFFSET = 2; // in ticks (default prescaler makes this microseconds)
+constexpr uint32_t PWM_MATCH_OFFSET = 25; // in timer cycles (25MHz) 1us
 
 struct SwPwmData{ // 14bytes double linked list node, (16 with packing)
   pin_t pin = P_NC;
@@ -44,25 +45,6 @@ struct SoftwarePwmTable {
     for(std::size_t i = 0; i < swpwm_pin_table.size() - 1; ++i) {
       swpwm_pin_table[i].next = &swpwm_pin_table[i + 1];
     }
-  }
-
-  void init(const uint32_t prescale, const uint32_t period, const uint32_t int_priority = 2) {
-    // Setup timer for Timer3 Interrupt controlled PWM
-    LPC_SC->PCONP |= 1 << 23;                 // power on timer3
-    LPC_TIM3->PR = prescale;                  // match PWM hardware prescaler
-    LPC_TIM3->MCR = util::bitset_value(0, 1); // Interrupt on MR0, reset on MR0
-    LPC_TIM3->MR0 = period - 1;               // match PWM hardware period
-    LPC_TIM3->TCR = util::bit_value(0);       // enable the timer
-
-    NVIC_SetPriority(TIMER3_IRQn, NVIC_EncodePriority(0, int_priority, 0));
-  }
-
-  void set_period(const uint32_t period) {
-    LPC_TIM3->MR0 = period - 1;
-  }
-
-  constexpr uint32_t size() {
-    return length;
   }
 
   constexpr bool exists(const pin_t pin) {
@@ -174,6 +156,76 @@ struct SoftwarePwmTable {
   }
 };
 
-extern SoftwarePwmTable<PWM_MAX_SOFTWARE_CHANNELS> SoftwarePWM;
+class SoftwarePWM {
+public:
+  static void init(const uint32_t frequency, const uint32_t int_priority = 2) {
+    // Setup timer for Timer3 Interrupt controlled PWM
+    LPC_SC->PCONP |= 1 << 23;                 // power on timer3
+    LPC_TIM3->PR = 0; // no prescaler
+    LPC_TIM3->MCR = util::bitset_value(0, 1); // Interrupt on MR0, reset on MR0
+    LPC_TIM3->MR0 = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_TIMER3) / frequency) - 1; // set frequency
+    LPC_TIM3->TCR = util::bit_value(0);       // enable the timer
+
+    NVIC_SetPriority(TIMER3_IRQn, NVIC_EncodePriority(0, int_priority, 0));
+  }
+
+  static void set_frequency(const uint32_t frequency){
+    set_period(CLKPWR_GetPCLK(CLKPWR_PCLKSEL_TIMER3) / frequency);
+  }
+
+  static void set_period(const uint32_t period) {
+    uint32_t old_period = LPC_TIM3->MR0;
+    LPC_TIM3->MR0 = period - 1;
+    LPC_TIM3->TC = util::map(LPC_TIM3->TC, 0, old_period, 0, LPC_TIM3->MR0);
+    if (LPC_TIM3->TC > LPC_TIM3->MR0) {
+      LPC_TIM3->TC = LPC_TIM3->MR0 - 1;
+    }
+  }
+
+  static uint32_t get_period() {
+    return LPC_TIM3->MR0 + 1;
+  }
+
+  static uint32_t size() {
+    return data_table.length;
+  }
+
+  static SwPwmData* data() {
+    return data_table.swpwm_table_head;
+  }
+
+  [[nodiscard]] static bool available(const pin_t pin) {
+    return data_table.swpwm_table_free != nullptr;
+  }
+
+  [[nodiscard]] static bool active(const pin_t pin) {
+    return data_table.exists(pin);
+  }
+
+  static void set_us(const pin_t pin, const uint32_t value) {
+    set_match(pin, (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_TIMER3) / 1000000) * value);
+  }
+
+  static void set_match(const pin_t pin, const uint32_t value) {
+    data_table.update(pin, value);
+  }
+
+  static bool attach(const pin_t pin, const uint32_t value) {
+    if (data_table.update(pin, value)) {
+      gpio_set_output(pin);
+      gpio_clear(pin);
+      pin_enable_feature(pin, 0);            // initialise pin for gpio output
+      return true;
+    }
+    return false;
+  }
+
+  static bool detach(const pin_t pin) {
+    return data_table.remove(pin);
+  }
+
+private:
+  static SoftwarePwmTable<PWM_MAX_SOFTWARE_CHANNELS> data_table;
+};
 
 #endif // _SOFTWARE_PWM_H_

@@ -18,73 +18,160 @@
 #ifndef _HARDWARE_PWM_H_
 #define _HARDWARE_PWM_H_
 
+#include <lpc17xx_clkpwr.h>
+#include <lpc17xx_pwm.h>
 #include <pinmapping.h>
 
-// 32bit bitset used to track whether a pin is activly using hardware pwm
-extern uint32_t active_pwm_pins;
+class HardwarePWM {
+  // return the bits to attach the PWM hardware depending on port using a lookup table
+  [[nodiscard]] static constexpr int8_t pwm_feature_index(const pin_t pin) noexcept {
+    constexpr std::array<int8_t, 5> lookup {-1, 2, 1, 3, -1};
+    return lookup[LPC1768_PIN_PORT(pin)];
+  }
 
-void pwm_hardware_init(const uint32_t prescale, const uint32_t period);
+  // return a reference to a PWM timer register using a lookup table as they are not contiguous
+  [[nodiscard]] static constexpr uint32_t match_register_lookup(const pin_t pin) noexcept {
+    constexpr uint32_t MR0_OFFSET = 6, MR4_OFFSET = 16;
+    return LPC_PWM1_BASE + (LPC1768_PIN_PWM(pin) > 3 ? (MR4_OFFSET + LPC1768_PIN_PWM(pin) - 4) : (MR0_OFFSET + LPC1768_PIN_PWM(pin))) * sizeof(uint32_t);
+  }
 
-// return the bits to attach the PWM hardware depending on port using a lookup table
-[[nodiscard]] constexpr int8_t pin_feature_pwm(const pin_t pin) noexcept {
-  constexpr std::array<int8_t, 5> lookup {-1, 2, 1, 3, -1};
-  return lookup[LPC1768_PIN_PORT(pin)];
-}
+  // return a reference to a PWM timer register using a lookup table as they are not contiguous
+  [[nodiscard]] static constexpr auto match_register_ptr(const pin_t pin) noexcept {
+    return util::memory_ptr<uint32_t>(match_register_lookup(pin));
+  }
 
-// return a reference to a PWM timer register using a lookup table as they are not contiguous
-[[nodiscard]] constexpr uint32_t pwm_match_lookup(const pin_t pin) noexcept {
-  constexpr uint32_t MR0_OFFSET = 24, MR4_OFFSET = 64;
-  return LPC_PWM1_BASE + (LPC1768_PIN_PWM(pin) > 3 ? MR4_OFFSET : MR0_OFFSET ) + (sizeof(uint32_t) * LPC1768_PIN_PWM(pin)) ;
-}
+  // generate a unique bit for each hardware PWM capable pin
+  [[nodiscard]] static constexpr uint8_t get_pin_id(const pin_t pin) noexcept {
+    return (LPC1768_PIN_PORT(pin) * 6) + (LPC1768_PIN_PWM(pin) - 1);
+  }
 
-// return a reference to a PWM timer register using a lookup table as they are not contiguous
-[[nodiscard]] constexpr auto& pin_pwm_match(const pin_t pin) noexcept {
-   return util::memory_ref<uint32_t>(pwm_match_lookup(pin));
-}
+  // update the bitset an activate hardware pwm channel for output
+  static inline void activate_channel(const pin_t pin) {
+    util::bit_set(active_pins, get_pin_id(pin));         // mark the pin as active
+    util::bit_clear(idle_pins, get_pin_id(pin));
+    util::bit_set(LPC_PWM1->PCR, 8 + LPC1768_PIN_PWM(pin));  // turn on the pins PWM output (8 offset + PWM channel)
+    pin_enable_feature(pin, pwm_feature_index(pin));
+  }
 
-// generate a unique bit for each hardware PWM capable pin
-[[nodiscard]] constexpr uint8_t pwm_pin_id(const pin_t pin) noexcept {
-  return (LPC1768_PIN_PORT(pin) * 6) + (LPC1768_PIN_PWM(pin) - 1);
-}
+  // update the bitset and deactivate the hardware pwm channel
+  static inline void deactivate_channel(const pin_t pin) {
+    util::bit_clear(active_pins, get_pin_id(pin));      // mark pin as inactive
+    if(!channel_active(pin)) util::bit_clear(LPC_PWM1->PCR, 8 + LPC1768_PIN_PWM(pin)); // turn off the PWM output
+  }
 
-// return true if a pwm channel is already attached to a pin
-[[nodiscard]] constexpr bool pwm_channel_active(const pin_t pin) noexcept {
-  const uint32_t channel = LPC1768_PIN_PWM(pin) - 1;
-  return LPC1768_PIN_PWM(pin) && util::bitset_mask(active_pwm_pins, util::bitset_value(6 + channel, 2 * 6 + channel, 3 * 6 + channel));
-}
+  // update the bitset and deactivate the hardware pwm channel
+  static inline void set_idle(const pin_t pin) {
+    gpio_set_output(pin); // used when at 0 duty cycle
+    util::bit_set(idle_pins, get_pin_id(pin));      // mark pin as inactive
+    pin_enable_feature(pin, 0);
+    gpio_clear(pin);
+  }
 
-// return true if a pin is already attached to PWM hardware
-[[nodiscard]] constexpr bool pwm_pin_active(const pin_t pin) noexcept {
-  return LPC1768_PIN_PWM(pin) && util::bit_test(active_pwm_pins, pwm_pin_id(pin));
-}
+    // return true if a pwm channel is already attached to a pin
+  [[nodiscard]] static constexpr bool channel_active(const pin_t pin) noexcept {
+    const uint32_t channel = LPC1768_PIN_PWM(pin) - 1;
+    return LPC1768_PIN_PWM(pin) && util::bitset_mask(active_pins, util::bitset_value(6 + channel, 2 * 6 + channel, 3 * 6 + channel));
+  }
 
-[[gnu::always_inline]] inline void pwm_set_period(const uint32_t period) {
-  LPC_PWM1->MR0 = period - 1;               // TC resets every period cycles
-  util::bit_set(LPC_PWM1->LER, 0);
-}
+public:
+  //static void init(const uint32_t prescale, const uint32_t period) {
+  static void init(const uint32_t frequency) {
+    // Power on the peripheral
+    CLKPWR_ConfigPPWR (CLKPWR_PCONP_PCPWM1, ENABLE);
+    CLKPWR_SetPCLKDiv (CLKPWR_PCLKSEL_PWM1, CLKPWR_PCLKSEL_CCLK_DIV_4);
 
-// update the bitset an activate hardware pwm channel for output
-[[gnu::always_inline]] inline void pwm_activate_channel(const pin_t pin) {
-  util::bit_set(active_pwm_pins, pwm_pin_id(pin));         // mark the pin as active
-  util::bit_set(LPC_PWM1->PCR, 8 + LPC1768_PIN_PWM(pin));  // turn on the pins PWM output (8 offset + PWM channel)
-}
+    // Make sure it is in a clean state
+    LPC_PWM1->IR = 0xFF & PWM_IR_BITMASK;
+    LPC_PWM1->TCR = 0;
+    LPC_PWM1->CTCR = 0;
+    LPC_PWM1->MCR = 0;
+    LPC_PWM1->CCR = 0;
+    LPC_PWM1->PCR &= 0xFF00;
+    LPC_PWM1->LER = 0;
 
-// update the bitset and deactivate the hardware pwm channel
-[[gnu::always_inline]] inline void pwm_deactivate_channel(const pin_t pin) {
-  util::bit_clear(active_pwm_pins, pwm_pin_id(pin));      // mark pin as inactive
-  if(!pwm_channel_active(pin)) util::bit_clear(LPC_PWM1->PCR, 8 + LPC1768_PIN_PWM(pin)); // turn off the PWM output
-}
+    // No clock prescaler
+    LPC_PWM1->PR = 0;
 
-// update the match register for a channel and set the latch to update on next period
-[[gnu::always_inline]] inline void pwm_set_match(const pin_t pin, const uint32_t value) {
-  pin_pwm_match(pin) = value;
-  util::bit_set(LPC_PWM1->LER, LPC1768_PIN_PWM(pin));
-}
+    // Configured to reset TC if it matches MR0, No interrupts
+    LPC_PWM1->MCR = util::bit_value(1);
 
-[[gnu::always_inline]] inline void pwm_hardware_attach(pin_t pin, uint32_t value) {
-  pwm_set_match(pin, value);
-  pwm_activate_channel(pin);
-  pin_enable_feature(pin, pin_feature_pwm(pin));
-}
+    // Set the period using channel 0 before enabling peripheral
+    LPC_PWM1->MR0 = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / frequency) - 1;
+    LPC_PWM1->LER = util::bit_value(0); // if only latching worked
+
+    // Enable PWM mode
+    // TODO: this is very unreliable appears to randomly miss latches thus not changing the duty cycle
+    // disabling PWM latch mode at least gives reliable (bit 3)
+    //LPC_PWM1->TCR = util::bitset_value(0, 3);      //  Turn on PWM latch mode and Enable counters
+    LPC_PWM1->TCR = util::bitset_value(0);
+  }
+
+  [[nodiscard]] static constexpr bool available(const pin_t pin) noexcept {
+    return LPC1768_PIN_PWM(pin) && !channel_active(pin);
+  }
+
+  // return true if a pin is already attached to PWM hardware
+  [[nodiscard]] static constexpr bool active(const pin_t pin) noexcept {
+    return LPC1768_PIN_PWM(pin) && util::bit_test(active_pins, get_pin_id(pin));
+  }
+
+  static inline void set_frequency(const uint32_t frequency) {
+    set_period(CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / frequency);
+  }
+
+  static inline void set_period(const uint32_t period) {
+    LPC_PWM1->TCR = util::bit_value(1);
+    LPC_PWM1->MR0 = period - 1;  // TC resets every period cycles
+    LPC_PWM1->LER = util::bit_value(0);
+    LPC_PWM1->TCR = util::bitset_value(0);
+  }
+
+  static inline uint32_t get_period() {
+    return LPC_PWM1->MR0 + 1;
+  }
+
+  static inline void set_us(const pin_t pin, const uint32_t value) {
+    set_match(pin, (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / 1000000) * value);
+  }
+
+  // update the match register for a channel and set the latch to update on next period
+  static inline void set_match(const pin_t pin, const uint32_t value) {
+    //work around for bug if MR1 == MR0
+    *match_register_ptr(pin) = value == LPC_PWM1->MR0 ? value + 1 : value;
+    // tried to work around latch issue by always setting all bits, was unsuccessful
+    LPC_PWM1->LER = util::bit_value(LPC1768_PIN_PWM(pin));
+
+    // At 0 duty cycle hardware pwm outputs 1 cycle pulses
+    // Work around it by disabling the pwm output and setting the pin low util the duty cycle is updated
+    if(value == 0) {
+      set_idle(pin);
+    } else if(util::bit_test(idle_pins, get_pin_id(pin))) {
+      pin_enable_feature(pin, pwm_feature_index(pin));
+      util::bit_clear(idle_pins, get_pin_id(pin));
+    }
+  }
+
+  static inline bool attach(const pin_t pin, const uint32_t value) {
+    if(!available(pin)) return false;
+    set_match(pin, value);
+    activate_channel(pin);
+    return true;
+  }
+
+  static inline bool detach(const pin_t pin) {
+    if (active(pin)) {
+      pin_enable_feature(pin, 0); // reenable gpio
+      gpio_clear(pin);
+      deactivate_channel(pin);
+      return true;
+    }
+    return false;
+  }
+
+private:
+  // 32bit bitset used to track whether a pin is activly using hardware pwm
+  static uint32_t active_pins;
+  static uint32_t idle_pins;
+};
 
 #endif // _HARDWARE_PWM_H_

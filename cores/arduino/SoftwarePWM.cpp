@@ -1,6 +1,6 @@
 #include <SoftwarePWM.h>
 
-SoftwarePwmTable<PWM_MAX_SOFTWARE_CHANNELS> SoftwarePWM {};
+SoftwarePwmTable<PWM_MAX_SOFTWARE_CHANNELS> SoftwarePWM::data_table {};
 
 struct PwmFrameItem { pin_t pin = P_NC; uint32_t match = 0; };
 std::array<PwmFrameItem, PWM_MAX_SOFTWARE_CHANNELS> pwm_frame;  // need to cache data for the frame to avoid out of frame transitions (160 bytes @ 20 software pwm pins!)
@@ -30,7 +30,7 @@ extern "C" void TIMER3_IRQHandler(void) {
     // reset all channels
     auto frame_it = pwm_frame.begin();
     // iterate through the attached pin list building (latching in) this frames data list, execution increases linearly with number of active software pins
-    for (SwPwmData* it = SoftwarePWM.swpwm_table_head; it != nullptr; it = it->next) {
+    for (SwPwmData* it = SoftwarePWM::data(); it != nullptr; it = it->next) {
       if(it->value > 0) {
         gpio_set(it->pin);  // set the pin high for the start of this frame
         frame_it->pin = it->pin;

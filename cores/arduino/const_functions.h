@@ -104,13 +104,18 @@ template <typename Value, typename BitSet>
 
 template<typename T>
 [[nodiscard]] constexpr auto memory_ptr(const std::size_t loc) {
-  return reinterpret_cast<volatile T(*)>(loc);
+  return reinterpret_cast<volatile T*>(loc);
 }
 
 template<typename T>
 [[nodiscard]] constexpr auto& memory_ref(const std::size_t loc) {
-  return *reinterpret_cast<volatile T(*)>(loc);
+  return *reinterpret_cast<volatile T*>(loc);
 }
+
+[[nodiscard]] constexpr uint32_t map(uint32_t x, uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max) noexcept{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 
 #define _BV(n) (1<<(n))
 #define TEST(n,b) !!((n)&_BV(b))
