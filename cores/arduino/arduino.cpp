@@ -22,13 +22,14 @@
 #include <cstdio>
 
 #include <lpc17xx_pinsel.h>
-#include <pinmapping.h>
+
 #include <time.h>
 #include <const_functions.h>
-
-#include <Arduino.h>
 #include <adc.h>
 #include <pwm.h>
+#include <gpio.h>
+
+#include <Arduino.h>
 
 extern uint64_t _millis;
 

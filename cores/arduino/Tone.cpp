@@ -1,5 +1,6 @@
 
-#include "pinmapping.h"
+#include <bit_manipulation.h>
+#include <gpio.h>
 
 pin_t tone_pin = P_NC;
 volatile int32_t toggles = 0;

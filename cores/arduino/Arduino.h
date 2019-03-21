@@ -32,6 +32,7 @@
 #include <binary.h>
 #include <const_functions.h>
 #include <pinmapping.h>
+#include <gpio.h>
 
 using boolean = bool;
 

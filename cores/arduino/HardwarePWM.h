@@ -20,7 +20,7 @@
 
 #include <lpc17xx_clkpwr.h>
 #include <lpc17xx_pwm.h>
-#include <pinmapping.h>
+#include <gpio.h>
 
 class HardwarePWM {
   // return the bits to attach the PWM hardware depending on port using a lookup table
