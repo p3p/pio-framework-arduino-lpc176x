@@ -431,7 +431,7 @@ uint32_t USB_ReadEP (uint32_t EPNum, uint8_t *pData) {
   cnt &= PKT_LNGTH_MASK;
 
   for (n = 0; n < (cnt + 3) / 4; n++) {
-    *((__packed uint32_t *)pData) = LPC_USB->USBRxData;
+    *((uint32_t *)pData) = LPC_USB->USBRxData;
     pData += 4;
   }
   LPC_USB->USBCtrl = 0;
@@ -462,7 +462,7 @@ uint32_t USB_WriteEP (uint32_t EPNum, uint8_t *pData, uint32_t cnt) {
   LPC_USB->USBTxPLen = cnt;
 
   for (n = 0; n < (cnt + 3) / 4; n++) {
-    LPC_USB->USBTxData = *((__packed uint32_t *)pData);
+    LPC_USB->USBTxData = *((uint32_t *)pData);
     pData += 4;
   }
   LPC_USB->USBCtrl = 0;
