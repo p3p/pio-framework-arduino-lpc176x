@@ -149,7 +149,7 @@ __inline uint32_t USB_ReqGetStatus(void) {
     break;
   case REQUEST_TO_INTERFACE:
     if ((USB_Configuration != 0) && (SetupPacket.wIndex.WB.L < USB_NumInterfaces)) {
-      *((__packed uint16_t *) EP0Buf) = 0;
+      *((uint16_t *) EP0Buf) = 0;
       *((uint16_t *) EP0Buf) = 0;
       EP0Data.pData = EP0Buf;
     } else {
@@ -160,7 +160,7 @@ __inline uint32_t USB_ReqGetStatus(void) {
     n = SetupPacket.wIndex.WB.L & 0x8F;
     m = (n & 0x80) ? ((1 << 16) << (n & 0x0F)) : (1 << n);
     if (((USB_Configuration != 0) || ((n & 0x0F) == 0)) && (USB_EndPointMask & m)) {
-      *((__packed uint16_t *) EP0Buf) = (USB_EndPointHalt & m) ? 1 : 0;
+      *((uint16_t *) EP0Buf) = (USB_EndPointHalt & m) ? 1 : 0;
       *((uint16_t *) EP0Buf) = (USB_EndPointHalt & m) ? 1 : 0;
       EP0Data.pData = EP0Buf;
     } else {

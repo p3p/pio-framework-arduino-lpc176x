@@ -5058,8 +5058,9 @@ FRESULT f_setlabel (
 	dj.obj.fs = fs;
 
 	/* Get length of given volume label */
+#pragma GCC diagnostic error "-Wmisleading-indentation"
 	for (slen = 0; (UINT)label[slen] >= ' '; slen++) ;	/* Get name length */
-
+#pragma GCC diagnostic push
 #if FF_FS_EXFAT
 	if (fs->fs_type == FS_EXFAT) {	/* On the exFAT volume */
 		for (i = j = 0; i < slen; ) {	/* Create volume label in directory form */
@@ -6200,5 +6201,3 @@ FRESULT f_setcp (
 	return FR_OK;
 }
 #endif	/* FF_CODE_PAGE == 0 */
-
-

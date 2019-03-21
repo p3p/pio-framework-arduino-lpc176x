@@ -84,6 +84,9 @@ static uint32_t getPClock (uint32_t timernum)
 	case 3:
 		clkdlycnt = CLKPWR_GetPCLK (CLKPWR_PCLKSEL_TIMER3);
 		break;
+
+	default:
+		clkdlycnt = 0;
 	}
 	return clkdlycnt;
 }
@@ -97,11 +100,8 @@ static uint32_t getPClock (uint32_t timernum)
  **********************************************************************/
 uint32_t converUSecToVal (uint32_t timernum, uint32_t usec)
 {
-	uint64_t clkdlycnt;
-
 	// Get Pclock of timer
-	clkdlycnt = (uint64_t) getPClock(timernum);
-
+	uint64_t clkdlycnt = (uint64_t) getPClock(timernum);
 	clkdlycnt = (clkdlycnt * usec) / 1000000;
 	return (uint32_t) clkdlycnt;
 }

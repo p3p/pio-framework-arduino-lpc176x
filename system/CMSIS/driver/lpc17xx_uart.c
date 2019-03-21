@@ -96,6 +96,10 @@ static Status uart_set_divisors(LPC_UART_TypeDef *UARTx, uint32_t baudrate)
 	{
 		uClk = CLKPWR_GetPCLK (CLKPWR_PCLKSEL_UART3);
 	}
+	else
+	{
+		return errorStatus;
+	}
 
 
 	/* In the Uart IP block, baud rate is calculated using FDR and DLL-DLM registers
@@ -711,6 +715,8 @@ void UART_IntConfig(LPC_UART_TypeDef *UARTx, UART_INT_Type UARTIntCfg, Functiona
 		case UART_INTCFG_ABTO:
 			tmp = UART_IER_ABTOINT_EN;
 			break;
+		default:
+		  tmp = 0;
 	}
 
 	if ((LPC_UART1_TypeDef *) UARTx == LPC_UART1)
@@ -1191,6 +1197,7 @@ void UART_FullModemConfigMode(LPC_UART1_TypeDef *UARTx, UART_MODEM_MODE_Type Mod
 		tmp = UART1_MCR_AUTO_CTS_EN;
 		break;
 	default:
+	  tmp = 0;
 		break;
 	}
 
@@ -1379,4 +1386,3 @@ uint32_t UART_RS485SendData(LPC_UART1_TypeDef *UARTx, uint8_t *pData, uint32_t s
  * @}
  */
 /* --------------------------------- End Of File ------------------------------ */
-
