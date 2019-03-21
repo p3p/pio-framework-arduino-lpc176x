@@ -23,11 +23,11 @@
 #ifndef _PINMAPPING_H_
 #define _PINMAPPING_H_
 
-#include <const_functions.h>
 #include <stdint.h>
 #include <iterator>
 #include <array>
 
+#include <const_functions.h>
 #include <LPC17xx.h>
 
 typedef int16_t pin_t;
@@ -260,65 +260,6 @@ constexpr bool INTERRUPT_PIN(const pin_t pin) {
 // Get the pin number at the given index
 constexpr pin_t GET_PIN_MAP_PIN(const int16_t index) {
   return util::within(index, 0, NUM_DIGITAL_PINS - 1) ? pin_map[index] : P_NC;
-}
-
-constexpr uint32_t pin_feature_bits(const pin_t pin, const uint8_t feature) {
-  return feature << (LPC1768_PIN_PIN(pin) < 16 ? LPC1768_PIN_PIN(pin) : LPC1768_PIN_PIN(pin) - 16) * 2;
-}
-
-constexpr auto pin_feature_reg(const pin_t pin) {
-  return util::memory_ptr<uint32_t>(LPC_PINCON_BASE + (sizeof(uint32_t) * ((LPC1768_PIN_PORT(pin) * 2) + (LPC1768_PIN_PIN(pin) > 15))) );
-}
-
-constexpr void pin_enable_feature(const pin_t pin, uint8_t feature) {
-  auto feature_reg = pin_feature_reg(pin);
-  util::bitset_clear(*feature_reg, pin_feature_bits(pin, 0b11));
-  util::bitset_set(*feature_reg, pin_feature_bits(pin, feature));
-}
-
-constexpr auto gpio_port(uint8_t port) {
-  constexpr std::size_t LPC_PORT_OFFSET = 0x0020;
-  return util::memory_ptr<LPC_GPIO_TypeDef>(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port);
-}
-
-[[gnu::always_inline]] inline void gpio_set_input(const pin_t pin) {
-  util::bit_clear(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
-}
-
-[[gnu::always_inline]] inline void gpio_set_output(const pin_t pin) {
-  util::bit_set(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
-}
-
-[[gnu::always_inline]] inline bool gpio_get_dir(const pin_t pin) {
-  return util::bit_test(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
-}
-
-[[gnu::always_inline]] inline void gpio_set(const pin_t pin) {
-  gpio_port(LPC1768_PIN_PORT(pin))->FIOSET = util::bit_value(LPC1768_PIN_PIN(pin));
-}
-
-[[gnu::always_inline]] inline void gpio_set_port(const uint8_t port, const uint32_t pinmap) {
-  gpio_port(port)->FIOSET = pinmap;
-}
-
-[[gnu::always_inline]] inline void gpio_clear(const pin_t pin) {
-  gpio_port(LPC1768_PIN_PORT(pin))->FIOCLR = util::bit_value(LPC1768_PIN_PIN(pin));
-}
-
-[[gnu::always_inline]] inline void gpio_clear_port(const uint8_t port, const uint32_t pinmap) {
-  gpio_port(port)->FIOCLR = pinmap;
-}
-
-[[gnu::always_inline]] inline void gpio_set(const pin_t pin, const bool value) {
-  value ? gpio_set(pin) : gpio_clear(pin);
-}
-
-[[gnu::always_inline]] inline bool gpio_get(const pin_t pin) {
-  return util::bit_test(gpio_port(LPC1768_PIN_PORT(pin))->FIOPIN, LPC1768_PIN_PIN(pin));
-}
-
-[[gnu::always_inline]] inline void gpio_toggle(const pin_t pin) {
-  gpio_set(pin, !gpio_get(pin));
 }
 
 #endif // _PINMAPPING_H_

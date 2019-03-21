@@ -17,6 +17,7 @@
  */
 
 #include <LPC17xx.h>
+#include <bit_manipulation.h>
 
 #include <Arduino.h>
 
@@ -78,47 +79,47 @@ void detachInterrupt(const pin_t pin) {
 extern "C" void GpioEnableInt(uint32_t port, uint32_t pin, uint32_t mode) {
   //pin here is the processor pin, not logical pin
   if (port == 0) {
-    LPC_GPIOINT->IO0IntClr = _BV(pin);
+    LPC_GPIOINT->IO0IntClr = util::bit_value(pin);
     if (mode == RISING) {
-      SBI(LPC_GPIOINT->IO0IntEnR, pin);
-      CBI(LPC_GPIOINT->IO0IntEnF, pin);
+      util::bit_set(LPC_GPIOINT->IO0IntEnR, pin);
+      util::bit_clear(LPC_GPIOINT->IO0IntEnF, pin);
     }
     else if (mode == FALLING) {
-      SBI(LPC_GPIOINT->IO0IntEnF, pin);
-      CBI(LPC_GPIOINT->IO0IntEnR, pin);
+      util::bit_set(LPC_GPIOINT->IO0IntEnF, pin);
+      util::bit_clear(LPC_GPIOINT->IO0IntEnR, pin);
     }
     else if (mode == CHANGE) {
-      SBI(LPC_GPIOINT->IO0IntEnR, pin);
-      SBI(LPC_GPIOINT->IO0IntEnF, pin);
+      util::bit_set(LPC_GPIOINT->IO0IntEnR, pin);
+      util::bit_set(LPC_GPIOINT->IO0IntEnF, pin);
     }
   }
   else {
-    LPC_GPIOINT->IO2IntClr = _BV(pin);
+    LPC_GPIOINT->IO2IntClr = util::bit_value(pin);
     if (mode == RISING) {
-      SBI(LPC_GPIOINT->IO2IntEnR, pin);
-      CBI(LPC_GPIOINT->IO2IntEnF, pin);
+      util::bit_set(LPC_GPIOINT->IO2IntEnR, pin);
+      util::bit_clear(LPC_GPIOINT->IO2IntEnF, pin);
     }
     else if (mode == FALLING) {
-      SBI(LPC_GPIOINT->IO2IntEnF, pin);
-      CBI(LPC_GPIOINT->IO2IntEnR, pin);
+      util::bit_set(LPC_GPIOINT->IO2IntEnF, pin);
+      util::bit_clear(LPC_GPIOINT->IO2IntEnR, pin);
     }
     else if (mode == CHANGE) {
-      SBI(LPC_GPIOINT->IO2IntEnR, pin);
-      SBI(LPC_GPIOINT->IO2IntEnF, pin);
+      util::bit_set(LPC_GPIOINT->IO2IntEnR, pin);
+      util::bit_set(LPC_GPIOINT->IO2IntEnF, pin);
     }
   }
 }
 
 extern "C" void GpioDisableInt(const uint32_t port, const uint32_t pin) {
   if (port == 0) {
-    CBI(LPC_GPIOINT->IO0IntEnR, pin);
-    CBI(LPC_GPIOINT->IO0IntEnF, pin);
-    LPC_GPIOINT->IO0IntClr = _BV(pin);
+    util::bit_clear(LPC_GPIOINT->IO0IntEnR, pin);
+    util::bit_clear(LPC_GPIOINT->IO0IntEnF, pin);
+    LPC_GPIOINT->IO0IntClr = util::bit_value(pin);
   }
   else {
-    CBI(LPC_GPIOINT->IO2IntEnR, pin);
-    CBI(LPC_GPIOINT->IO2IntEnF, pin);
-    LPC_GPIOINT->IO2IntClr = _BV(pin);
+    util::bit_clear(LPC_GPIOINT->IO2IntEnR, pin);
+    util::bit_clear(LPC_GPIOINT->IO2IntEnF, pin);
+    LPC_GPIOINT->IO2IntClr = util::bit_value(pin);
   }
 }
 
@@ -137,24 +138,24 @@ extern "C" void EINT3_IRQHandler(void) {
   while (rise0 > 0) {                                       // If multiple pins changes happened continue as long as there are interrupts pending
     const uint8_t bitloc = 31 - __CLZ(rise0);               // CLZ returns number of leading zeros, 31 minus that is location of first pending interrupt
     if (callbacksP0[bitloc] != NULL) callbacksP0[bitloc]();
-    rise0 -= _BV(bitloc);
+    rise0 -= util::bit_value(bitloc);
   }
 
   while (fall0 > 0) {
     const uint8_t bitloc = 31 - __CLZ(fall0);
     if (callbacksP0[bitloc] != NULL) callbacksP0[bitloc]();
-    fall0 -= _BV(bitloc);
+    fall0 -= util::bit_value(bitloc);
   }
 
   while(rise2 > 0) {
     const uint8_t bitloc = 31 - __CLZ(rise2);
     if (callbacksP2[bitloc] != NULL) callbacksP2[bitloc]();
-    rise2 -= _BV(bitloc);
+    rise2 -= util::bit_value(bitloc);
   }
 
   while (fall2 > 0) {
     const uint8_t bitloc = 31 - __CLZ(fall2);
     if (callbacksP2[bitloc] != NULL) callbacksP2[bitloc]();
-    fall2 -= _BV(bitloc);
+    fall2 -= util::bit_value(bitloc);
   }
 }

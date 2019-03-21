@@ -35,13 +35,17 @@
 //
 #include <stdint.h>
 #include <stdarg.h>
-#include <Arduino.h>
-#include <pinmapping.h>
+
+#include <lpc17xx_rit.h>
+#include <lpc17xx_clkpwr.h>
+#include <debug_frmwrk.h>
+
+#include <gpio.h>
 #include <time.h>
-#include "SoftwareSerial.h"
-#include "lpc17xx_rit.h"
-#include "lpc17xx_clkpwr.h"
-#include "debug_frmwrk.h"
+
+#include <Arduino.h>
+#include <SoftwareSerial.h>
+
 
 #define FORCE_BAUD_RATE 19200
 #define INTERRUPT_PRIORITY 0
@@ -290,8 +294,8 @@ void SoftwareSerial::begin(long speed) {
     setRX();
   }
   else
-    setTX();  
-  
+    setTX();
+
   listen();
   //printf("hd %d active_in %d tx %d rx %d\n", _half_duplex, active_in, _receivePin, _transmitPin);
 }

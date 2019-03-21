@@ -42,6 +42,8 @@
 
 #include <algorithm>
 #include <LPC17xx.h>
+#include <gpio.h>
+
 #include <Arduino.h>
 
 uint8_t swSpiTransfer(uint8_t b, const uint8_t spi_speed, const pin_t sck_pin, const pin_t miso_pin, const pin_t mosi_pin) {

@@ -62,64 +62,8 @@ constexpr void limit(V& v, const N1 n1, const N2 n2) noexcept {
   else if (v > n2) v = n2;
 }
 
-template <typename Bit>
-[[nodiscard]] constexpr auto bit_value(const Bit bit) noexcept {
-  return (static_cast<uint32_t>(1) << bit);
-}
-
-template <typename Value, typename Bit>
-[[nodiscard]] constexpr bool bit_test(const Value& val, const Bit bit) noexcept {
-  return val & bit_value(bit);
-}
-
-template <typename Value, typename Bit>
-constexpr void bit_set(Value& val, const Bit bit) noexcept {
-  val |= bit_value(bit);
-}
-
-template <typename Value, typename Bit>
-constexpr void bit_clear(Value& val, const Bit bit) noexcept {
-  val &= ~bit_value(bit);
-}
-
-template<typename... Args>
-[[nodiscard]] constexpr auto bitset_value(Args... args) noexcept {
-  return (... | bit_value(args));
-}
-
-template <typename Value, typename BitSet>
-constexpr void bitset_set(Value& val, const BitSet bitset) noexcept {
-  val |= bitset;
-}
-
-template <typename Value, typename BitSet>
-constexpr void bitset_clear(Value& val, const BitSet bitset) noexcept {
-  val &= ~bitset;
-}
-
-template <typename Value, typename BitSet>
-[[nodiscard]] constexpr auto bitset_mask(const Value val, const BitSet bitset) noexcept {
-  return val & bitset;
-}
-
-template<typename T>
-[[nodiscard]] constexpr auto memory_ptr(const std::size_t loc) {
-  return reinterpret_cast<volatile T*>(loc);
-}
-
-template<typename T>
-[[nodiscard]] constexpr auto& memory_ref(const std::size_t loc) {
-  return *reinterpret_cast<volatile T*>(loc);
-}
-
 [[nodiscard]] constexpr uint32_t map(uint32_t x, uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max) noexcept{
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-
-
-#define _BV(n) (1<<(n))
-#define TEST(n,b) !!((n)&_BV(b))
-#define SBI(n,b) (n |= _BV(b))
-#define CBI(n,b) (n &= ~_BV(b))
 
 } // util

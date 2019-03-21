@@ -19,7 +19,7 @@
 #define _SOFTWARE_PWM_H_
 
 #include <lpc17xx_clkpwr.h>
-#include <pinmapping.h>
+#include <gpio.h>
 
 constexpr uint32_t PWM_MAX_SOFTWARE_CHANNELS = 20;
 constexpr uint32_t PWM_MATCH_OFFSET = 25; // in timer cycles (25MHz) 1us
