@@ -99,3 +99,21 @@ bool pwm_write_us(const pin_t pin, const uint32_t value) {
 
   return false;
 }
+
+bool pwm_set_frequency(const pin_t pin, const uint32_t frequency) {
+  if (!pwm_attached(pin)) {
+    pwm_attach_pin(pin);
+  }
+
+  if (HardwarePWM::active(pin)) {
+    HardwarePWM::set_frequency(frequency);
+    return true;
+  }
+
+  if (SoftwarePWM::active(pin)) {
+    SoftwarePWM::set_frequency(frequency);
+    return true;
+  }
+
+  return false;
+}

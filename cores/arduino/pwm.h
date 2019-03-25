@@ -28,4 +28,7 @@ bool pwm_write_ratio(const pin_t pin, const float value);
 bool pwm_write_us(const pin_t pin, const uint32_t value);
 bool pwm_detach_pin(const pin_t pin);
 
+uint32_t pwm_get_period(const pin_t pin);
+bool pwm_set_frequency(const pin_t pin, const uint32_t frequency);
+
 #endif // _LPC1768_PWM_H_
