@@ -41,7 +41,7 @@ extern "C" {
 #define MSC_IO_BUFFERS 2
 #define MSC_IO_BUFFER_SIZE 8*MSC_BLOCK_SIZE
 #define BUFFER_EMPTY 0xffffffff
-uint8_t IOBufferSpace[MSC_IO_BUFFERS*MSC_IO_BUFFER_SIZE]  __attribute__((section("AHBSRAM0"), aligned(4))) = {0}; 
+uint8_t IOBufferSpace[MSC_IO_BUFFERS*MSC_IO_BUFFER_SIZE]  __attribute__((section("AHBSRAM0"), aligned(4))) = {0};
 typedef struct {
   uint8_t *buffer;
   uint32_t length;
@@ -589,22 +589,22 @@ void MSC_Inquiry (void) {
   BulkBuf[14] = ' ';
   BulkBuf[15] = ' ';
 
-  BulkBuf[16] = 'R';           /* Product Identification */
-  BulkBuf[17] = 'e';
-  BulkBuf[18] = '-';
-  BulkBuf[19] = 'A';
-  BulkBuf[20] = 'R';
-  BulkBuf[21] = 'M';
+  BulkBuf[16] = 'S';           /* Product Identification */
+  BulkBuf[17] = 'D';
+  BulkBuf[18] = 'C';
+  BulkBuf[19] = 'a';
+  BulkBuf[20] = 'r';
+  BulkBuf[21] = 'd';
   BulkBuf[22] = ' ';
-  BulkBuf[23] = 'S';
-  BulkBuf[24] = 'D';
-  BulkBuf[25] = 'C';
-  BulkBuf[26] = 'a';
-  BulkBuf[27] = 'r';
-  BulkBuf[28] = 'd';
+  BulkBuf[23] = '0';
+  BulkBuf[24] = '1';
+  BulkBuf[25] = ' ';
+  BulkBuf[26] = ' ';
+  BulkBuf[27] = ' ';
+  BulkBuf[28] = ' ';
   BulkBuf[29] = ' ';
-  BulkBuf[30] = '0';
-  BulkBuf[31] = '1';
+  BulkBuf[30] = ' ';
+  BulkBuf[31] = ' ';
 
   BulkBuf[32] = '1';           /* Product Revision Level */
   BulkBuf[33] = '.';

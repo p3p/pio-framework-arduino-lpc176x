@@ -55,6 +55,12 @@ USB_EP_DATA EP0Data;
 
 USB_SETUP_PACKET SetupPacket;
 
+constexpr uint8_t str_descr_serial_length = 32 * 2 + 2;
+uint8_t str_descr_serial[] = { str_descr_serial_length, USB_STRING_DESCRIPTOR_TYPE, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0,
+                                                                                    '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0,
+                                                                                    '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0,
+                                                                                    '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0, '0', 0 };
+
 /*
  *  Reset USB Core
  *    Parameters:      None
@@ -278,17 +284,22 @@ __inline uint32_t USB_ReqGetDescriptor(void) {
       len = ((USB_CONFIGURATION_DESCRIPTOR *) pD)->wTotalLength;
       break;
     case USB_STRING_DESCRIPTOR_TYPE:
-      pD = (uint8_t *) USB_StringDescriptor;
-      for (n = 0; n != SetupPacket.wValue.WB.L; n++) {
-        if (((USB_STRING_DESCRIPTOR *) pD)->bLength != 0) {
-          pD += ((USB_STRING_DESCRIPTOR *) pD)->bLength;
+      if (SetupPacket.wValue.WB.L == 3) { // Serial code
+        EP0Data.pData = str_descr_serial;
+        len = ((USB_STRING_DESCRIPTOR *) EP0Data.pData)->bLength;
+      } else {
+        pD = (uint8_t *) USB_StringDescriptor;
+        for (n = 0; n != SetupPacket.wValue.WB.L; n++) {
+          if (((USB_STRING_DESCRIPTOR *) pD)->bLength != 0) {
+            pD += ((USB_STRING_DESCRIPTOR *) pD)->bLength;
+          }
         }
+        if (((USB_STRING_DESCRIPTOR *) pD)->bLength == 0) {
+          return (FALSE);
+        }
+        EP0Data.pData = pD;
+        len = ((USB_STRING_DESCRIPTOR *) EP0Data.pData)->bLength;
       }
-      if (((USB_STRING_DESCRIPTOR *) pD)->bLength == 0) {
-        return (FALSE);
-      }
-      EP0Data.pData = pD;
-      len = ((USB_STRING_DESCRIPTOR *) EP0Data.pData)->bLength;
       break;
     default:
       return (FALSE);
