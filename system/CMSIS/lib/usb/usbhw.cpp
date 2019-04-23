@@ -137,7 +137,7 @@ uint32_t RdCmdDat (uint32_t cmd) {
  *    Return Value:    None
  */
 
-extern uint8_t str_descr_serial[74];
+extern uint8_t str_descr_serial[66];
 
 void USB_Init (void) {
   uint32_t lpc176x_serial_number[4];
@@ -145,8 +145,7 @@ void USB_Init (void) {
   ReadDeviceSerialNum(lpc176x_serial_number);
   __enable_irq();
   uint8_t index = 0;
-  for(uint8_t x = 2; x < 74; x += 2) {
-    if(x == 18 || x == 28 || x == 38 || x == 48) continue;
+  for(uint8_t x = 2; x < 66; x += 2) {
     uint8_t c = (lpc176x_serial_number[index / 8] >> (28 - (4 * (index % 8)))) & 0xF;
     str_descr_serial[x] = (c < 10) ? (c + '0') : (c - 10 + 'A');
     ++index;
