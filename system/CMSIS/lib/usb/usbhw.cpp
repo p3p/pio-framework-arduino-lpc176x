@@ -22,6 +22,7 @@
 extern "C" {
 #include "LPC17xx.h"                        /* LPC17xx definitions */
 #include <debug_frmwrk.h>
+#include <lpc17xx_iap.h>
 }
 
 #include "usb.h"
@@ -136,7 +137,20 @@ uint32_t RdCmdDat (uint32_t cmd) {
  *    Return Value:    None
  */
 
+extern uint8_t str_descr_serial[74];
+
 void USB_Init (void) {
+  uint32_t lpc176x_serial_number[4];
+  __disable_irq();
+  ReadDeviceSerialNum(lpc176x_serial_number);
+  __enable_irq();
+  uint8_t index = 0;
+  for(uint8_t x = 2; x < 74; x += 2) {
+    if(x == 18 || x == 28 || x == 38 || x == 48) continue;
+    uint8_t c = (lpc176x_serial_number[index / 8] >> (28 - (4 * (index % 8)))) & 0xF;
+    str_descr_serial[x] = (c < 10) ? (c + '0') : (c - 10 + 'A');
+    ++index;
+  }
 
   LPC_PINCON->PINSEL1 &= ~((3<<26)|(3<<28));   /* P0.29 D+, P0.30 D- */
   LPC_PINCON->PINSEL1 |=  ((1<<26)|(1<<28));   /* PINSEL1 26.27, 28.29  = 01 */
