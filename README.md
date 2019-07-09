@@ -13,8 +13,19 @@ this is a work in progress with most basic functionality available.
 | Serial2 | P0_10 | P0_11 | 
 | Serial3 | P0_00 | P0_01 |  
 
-### AnalogRead
-There are 8 ADC channels available `P0_02, P0_03, P0_23, P0_24, P0_25, P0_26, P1_30, P1_31`
+### AnalogRead  
+There are 8 ADC channels available  
+
+| Pin | Channel Number|
+| --- | --- |
+| P0_02  | 7 | 
+| P0_03 | 6 | 
+| P0_23 | 0 | 
+| P0_24 | 1 |   
+| P0_25  | 2 | 
+| P0_26 | 3 | 
+| P1_30 | 4 | 
+| P1_31 | 5 |   
 
 ### AnalogWrite
 Although all pins can be used for PWM (software mode) there are 6 Hardware PWM channels, if a hardware channel is
