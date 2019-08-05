@@ -75,7 +75,7 @@ uint8_t swSpiTransfer(uint8_t b, const uint8_t spi_speed, const pin_t sck_pin, c
 
 void swSpiBegin(const pin_t sck_pin, const pin_t miso_pin, const pin_t mosi_pin) {
   pinMode(sck_pin, OUTPUT);
-  if (VALID_PIN(miso_pin)) pinMode(miso_pin, INPUT);
+  if (pin_is_valid(miso_pin)) pinMode(miso_pin, INPUT);
   pinMode(mosi_pin, OUTPUT);
 }
 

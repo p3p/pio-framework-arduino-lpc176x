@@ -1,66 +1,113 @@
 #pragma once
 
 #include <cstdint>
-
-#include <registers.h>
-#include <bit_manipulation.h>
 #include <pinmapping.h>
+#include <pin_control.h>
 
-inline auto gpio_port(uint8_t port) {
-  constexpr std::size_t LPC_PORT_OFFSET = 0x0020;
-  return util::memory_ptr<LPC_GPIO_TypeDef>(LPC_GPIO0_BASE + LPC_PORT_OFFSET * port);
+/**
+ *   PIN FUNCTION LPC176x::pin_type wrapper
+ */
+
+[[gnu::always_inline, nodiscard]] constexpr uint8_t pin_port(const pin_t pin) {
+  return LPC176x::pin_type{pin}.port();
 }
 
-inline void gpio_set_input(const pin_t pin) {
-  util::bit_clear(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
+[[gnu::always_inline, nodiscard]] constexpr  uint8_t pin_bit(const pin_t pin) {
+  return LPC176x::pin_type{pin}.bit();
 }
 
-inline void gpio_set_output(const pin_t pin) {
-  util::bit_set(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
+[[gnu::always_inline, nodiscard]] constexpr pin_t pin_index(const pin_t pin) {
+  return LPC176x::pin_type{pin}.index();
 }
 
-inline bool gpio_get_dir(const pin_t pin) {
-  return util::bit_test(gpio_port(LPC1768_PIN_PORT(pin))->FIODIR, LPC1768_PIN_PIN(pin));
+[[gnu::always_inline, nodiscard]] constexpr bool pin_is_valid(const pin_t pin) {
+  return LPC176x::pin_type{pin}.is_valid();
 }
 
-inline void gpio_set(const pin_t pin) {
-  gpio_port(LPC1768_PIN_PORT(pin))->FIOSET = util::bit_value(LPC1768_PIN_PIN(pin));
+[[gnu::always_inline, nodiscard]] constexpr uint8_t pin_has_adc(const pin_t pin) {
+  return LPC176x::pin_type{pin}.has_adc();
 }
 
-inline void gpio_set_port(const uint8_t port, const uint32_t pinmap) {
-  gpio_port(port)->FIOSET = pinmap;
+[[gnu::always_inline, nodiscard]] constexpr uint8_t pin_has_pwm(const pin_t pin) {
+  return LPC176x::pin_type{pin}.has_pwm();
 }
 
-inline void gpio_clear(const pin_t pin) {
-  gpio_port(LPC1768_PIN_PORT(pin))->FIOCLR = util::bit_value(LPC1768_PIN_PIN(pin));
+[[gnu::always_inline, nodiscard]] inline bool pin_adc_enabled(const pin_t pin) {
+  return LPC176x::pin_type{pin}.adc_enabled();
 }
 
-inline void gpio_clear_port(const uint8_t port, const uint32_t pinmap) {
-  gpio_port(port)->FIOCLR = pinmap;
+[[gnu::always_inline, nodiscard]] inline bool pin_pwm_enabled(const pin_t pin) {
+  return LPC176x::pin_type{pin}.pwm_enabled();
 }
 
-inline void gpio_set(const pin_t pin, const bool value) {
-  value ? gpio_set(pin) : gpio_clear(pin);
+[[gnu::always_inline]] inline void pin_set_mode(const pin_t pin, const PinMode mode) {
+  LPC176x::pin_type{pin}.mode(mode);
 }
 
-inline bool gpio_get(const pin_t pin) {
-  return util::bit_test(gpio_port(LPC1768_PIN_PORT(pin))->FIOPIN, LPC1768_PIN_PIN(pin));
+[[gnu::always_inline]] inline bool pin_get_mode(const pin_t pin) {
+  return LPC176x::pin_type{pin}.mode();
 }
 
-inline void gpio_toggle(const pin_t pin) {
-  gpio_set(pin, !gpio_get(pin));
+[[gnu::always_inline]] inline void pin_enable_adc(const pin_t pin) {
+  LPC176x::pin_type{pin}.enable_adc();
 }
 
-constexpr uint32_t pin_feature_bits(const pin_t pin, const uint8_t feature) {
-  return feature << (LPC1768_PIN_PIN(pin) < 16 ? LPC1768_PIN_PIN(pin) : LPC1768_PIN_PIN(pin) - 16) * 2;
+[[gnu::always_inline]] inline void pin_enable_pwm(const pin_t pin) {
+  LPC176x::pin_type{pin}.enable_pwm();
 }
 
-constexpr auto pin_feature_reg(const pin_t pin) {
-  return util::memory_ptr<uint32_t>(LPC_PINCON_BASE + (sizeof(uint32_t) * ((LPC1768_PIN_PORT(pin) * 2) + (LPC1768_PIN_PIN(pin) > 15))) );
+[[gnu::always_inline]] inline void pin_enable_feature(const pin_t pin, uint8_t feature) {
+  LPC176x::pin_type{pin}.function(feature);
 }
 
-constexpr void pin_enable_feature(const pin_t pin, uint8_t feature) {
-  auto feature_reg = pin_feature_reg(pin);
-  util::bitset_clear(*feature_reg, pin_feature_bits(pin, 0b11));
-  util::bitset_set(*feature_reg, pin_feature_bits(pin, feature));
+/**
+ *   GPIO LPC176x::pin_type wrapper
+ */
+
+[[gnu::always_inline]] inline void gpio_set_input(const pin_t pin) {
+  LPC176x::pin_type{pin}.input();
+}
+
+[[gnu::always_inline]] inline void gpio_set_output(const pin_t pin) {
+  LPC176x::pin_type{pin}.output();
+}
+
+[[gnu::always_inline]] inline void gpio_direction(const pin_t pin, bool value) {
+  value ? gpio_set_output(pin) : gpio_set_input(pin);
+}
+
+[[gnu::always_inline, nodiscard]] inline bool gpio_direction(const pin_t pin) {
+  return LPC176x::pin_type{pin}.direction();
+}
+
+[[gnu::always_inline]] inline void gpio_set(const pin_t pin) {
+  LPC176x::pin_type{pin}.set();
+}
+
+[[gnu::always_inline]] inline void gpio_clear(const pin_t pin) {
+  LPC176x::pin_type{pin}.clear();
+}
+
+[[gnu::always_inline]] inline void gpio_set_port(const uint8_t port, const uint32_t pinmap) {
+  LPC176x::gpio::port_set(port, pinmap);
+}
+
+[[gnu::always_inline]] inline void gpio_clear_port(const uint8_t port, const uint32_t pinmap) {
+  LPC176x::gpio::port_clear(port, pinmap);
+}
+
+[[gnu::always_inline]] inline void gpio_set(const pin_t pin, const bool value) {
+  LPC176x::pin_type{pin}.set(value);
+}
+
+[[gnu::always_inline, nodiscard]] inline bool gpio_get(const pin_t pin) {
+  return LPC176x::pin_type{pin}.get();
+}
+
+[[gnu::always_inline]] inline void gpio_toggle(const pin_t pin) {
+  LPC176x::pin_type{pin}.toggle();
+}
+
+[[gnu::always_inline, nodiscard]] constexpr bool gpio_interrupt_capable(const pin_t pin) {
+  return LPC176x::pin_type{pin}.is_interrupt_capable();
 }

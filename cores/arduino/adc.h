@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <LPC17xx.h>
-#include <pinmapping.h>
+#include <gpio.h>
 
 namespace LPC176x {
 
@@ -18,6 +18,46 @@ namespace LPC176x {
 // (1 : 13, 2 : 32, 3 : 67, 4 : 139, 5 : 281, 6 : 565, 7 : 1135, 8 : 2273)
 // K = 6, 565 samples, 500Hz sample rate, 1.13s convergence on full range step
 // Memory usage per ADC channel (bytes): 4 (32 Bytes for 8 channels)
+
+// struct [[gnu::packed]] adc_control {
+//   struct adc_register {   // 0x40034000
+//     struct control_register {     // 00
+//       uint8_t select;
+//       uint8_t clock_divider;
+//       uint8_t burtst    : 1;
+//       uint8_t reserved0 : 4;
+//       uint8_t power     : 1;
+//       uint8_t reserved1 : 2;
+//       uint8_t start     : 3;
+//       uint8_t edge      : 1;
+//       uint8_t reserved2 : 4;
+//     } control;
+//     static_assert(sizeof(control_register) == 4);
+//     struct [[gnu::packed]] global_data_register { // 04
+//       uint8_t reserved0 : 4;
+//       uint16_t result   : 12;
+//       uint8_t reserved1;
+//       uint8_t channel   : 3;
+//       uint8_t reserved2 : 3;
+//       bool overrun      : 1;
+//       bool done         : 1;
+//     } global_data;
+//     static_assert(sizeof(global_data_register) == 4);
+//     uint32_t unused;                   // 08
+//     struct [[gnu::packed]] interrupt_enable_register { // 0C
+//       struct [[gnu::packed]] int_bitset {
+//         bool interrupt : 1;
+//       } conversion_interrupt[8];
+//       bool global_interrupt_enable : 1;
+//       uint32_t reserved : 23;
+//     } interrupt_enable;
+//     static_assert(sizeof(interrupt_enable_register) == 4);
+//     uint32_t channel_data[8];     // 10,14,18,1C,20,24,28,2C
+//     uint32_t status;
+//     uint32_t trim;
+//   };
+//   static_assert(sizeof(adc_register) == 0x40034038 - 0x40034000);
+// };
 
 
 template <uint8_t ADC_LOWPASS_K_VALUE = 0, uint16_t ADC_MEDIAN_FILTER_SIZE = 0>
@@ -131,32 +171,12 @@ struct ADC {
   }
 
   static void enable_channel(const int ch) {
-    const pin_t pin = analogInputToDigitalPin(ch);
+    pin_t pin = analogInputToDigitalPin(ch);
+    if (pin_is_valid(pin) && pin_has_adc(pin)) pin_enable_adc(pin);
+  }
 
-    if (pin == -1) return;
-
-    const int8_t pin_port = LPC1768_PIN_PORT(pin),
-           pin_port_pin = LPC1768_PIN_PIN(pin),
-           pinsel_start_bit = pin_port_pin > 15 ? 2 * (pin_port_pin - 16) : 2 * pin_port_pin;
-
-    const uint8_t pin_sel_register = (pin_port == 0 && pin_port_pin <= 15) ? 0 :
-                                      pin_port == 0                        ? 1 :
-                                      pin_port == 1                        ? 3 : 10;
-
-    switch (pin_sel_register) {
-      case 1:
-        LPC_PINCON->PINSEL1 &= ~(0x3 << pinsel_start_bit);
-        LPC_PINCON->PINSEL1 |=  (0x1 << pinsel_start_bit);
-        break;
-      case 3:
-        LPC_PINCON->PINSEL3 &= ~(0x3 << pinsel_start_bit);
-        LPC_PINCON->PINSEL3 |=  (0x3 << pinsel_start_bit);
-        break;
-      case 0:
-        LPC_PINCON->PINSEL0 &= ~(0x3 << pinsel_start_bit);
-        LPC_PINCON->PINSEL0 |=  (0x2 << pinsel_start_bit);
-        break;
-    };
+  static inline bool busy() {
+    return LPC_ADC->ADCR & 0xFF;
   }
 
   static inline void start_conversion(const uint8_t ch) {
@@ -174,6 +194,7 @@ struct ADC {
     const uint32_t adgdr = LPC_ADC->ADGDR;
     LPC_ADC->ADCR &= ~(1 << (24)); // Stop conversion
     if (adgdr & ADC_OVERRUN) return 0;
+    LPC_ADC->ADCR &= ~(0xFF); // clear channel
 
     uint16_t data = (adgdr >> 4) & 0xFFF;      // copy the 12bit data value
 
