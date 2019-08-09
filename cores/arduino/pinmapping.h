@@ -1,9 +1,4 @@
 /**
- * Marlin 3D Printer Firmware
- * Copyright (C) 2016 MarlinFirmware [https://github.com/MarlinFirmware/Marlin]
- *
- * Based on Sprinter and grbl.
- * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,25 +15,25 @@
  *
  */
 
-#ifndef _PINMAPPING_H_
-#define _PINMAPPING_H_
+#pragma once
 
-#include <stdint.h>
+#include <cstdint>
 #include <iterator>
 #include <array>
 
-#include <pin_control.h>
-
 #include <const_functions.h>
 
-using LPC176x::pin_t;
-using LPC176x::PinMode;
+#include <pin_control.h>
+#include <gpio.h>
+
 
 #define P_NC -1
 #define P0_00 0x00
 #define P0_01 0x01
 #define P0_02 0x02
+#define P0_02_A7 P0_02
 #define P0_03 0x03
+#define P0_03_A6 P0_03
 #define P0_04 0x04
 #define P0_05 0x05
 #define P0_06 0x06
@@ -56,9 +51,13 @@ using LPC176x::PinMode;
 #define P0_21 0x15
 #define P0_22 0x16
 #define P0_23 0x17
+#define P0_23_A0 P0_23
 #define P0_24 0x18
+#define P0_24_A1 P0_24
 #define P0_25 0x19
+#define P0_25_A2 P0_25
 #define P0_26 0x1A
+#define P0_26_A3 P0_26
 #define P0_27 0x1B
 #define P0_28 0x1C
 #define P0_29 0x1D
@@ -86,7 +85,9 @@ using LPC176x::PinMode;
 #define P1_28 0x3C
 #define P1_29 0x3D
 #define P1_30 0x3E
+#define P1_30_A4 P1_30
 #define P1_31 0x3F
+#define P1_31_A5 P1_31
 #define P2_00 0x40
 #define P2_01 0x41
 #define P2_02 0x42
@@ -106,18 +107,12 @@ using LPC176x::PinMode;
 #define P4_28 0x9C
 #define P4_29 0x9D
 
-constexpr std::array<pin_t, 8> adc_pin_table {
-  P0_23, P0_24, P0_25, P0_26, P1_30, P1_31, P0_03, P0_02
-};
-
 constexpr uint8_t NUM_DIGITAL_PINS = 160;
-constexpr uint8_t NUM_ANALOG_INPUTS = adc_pin_table.size();
+constexpr uint8_t NUM_ANALOG_INPUTS = 8;
 
 // Get the digital pin for an analog index
-constexpr pin_t analogInputToDigitalPin(const int8_t p) {
-  return (util::within(p, 0, NUM_ANALOG_INPUTS) ? adc_pin_table[p] : P_NC);
+constexpr pin_t analogInputToDigitalPin(const int8_t channel) {
+  return LPC176x::pin_type::index_from_adc_channnel(channel);
 }
 
 constexpr pin_t digitalPinToInterrupt(const pin_t pin) { return pin; }
-
-#endif // _PINMAPPING_H_

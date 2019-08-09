@@ -1,16 +1,5 @@
 /*
- * SoftwareSerial.cpp (formerly NewSoftSerial.cpp)
- *
- * Multi-instance software serial library for Arduino/Wiring
- * -- Interrupt-driven receive and other improvements by ladyada
- *    (http://ladyada.net)
- * -- Tuning, circular buffer, derivation from class Print/Stream,
- *    multi-instance support, porting to 8MHz processors,
- *    various optimizations, PROGMEM delay tables, inverse logic and
- *    direct port writing by Mikal Hart (http://www.arduiniana.org)
- * -- Pin change interrupt macros by Paul Stoffregen (http://www.pjrc.com)
- * -- 20MHz processor support by Garrett Mace (http://www.macetech.com)
- * -- ATmega1280/2560 support by Brett Hagman (http://www.roguerobotics.com/)
+ * Arduino SoftwareSerial API implementation for LPC176x by gloomyandy
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,8 +15,6 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
- * The latest version of this library can always be found at
- * http://arduiniana.org.
  */
 
 //
@@ -325,7 +312,7 @@ size_t SoftwareSerial::available() {
 size_t SoftwareSerial::write(uint8_t b) {
   // wait for previous transmit to complete
   _output_pending = 1;
-  while(active_out) ;
+  while(active_out);
   // add start and stop bits.
   tx_buffer = b << 1 | 0x200;
   tx_bit_cnt = 0;

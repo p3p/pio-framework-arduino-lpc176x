@@ -20,6 +20,22 @@ template<typename... Args>
 }
 
 template <typename Value, typename BitSet>
+[[nodiscard]] constexpr auto bitset_build_mask(const Value position, const BitSet size) noexcept {
+  return ((static_cast<uint32_t>(1) << size) - 1) << position;
+}
+
+template <typename Register, typename Position, typename BitSet>
+[[nodiscard]] constexpr auto bitset_get_value(Register& reg, const Position position, const BitSet size) noexcept {
+  return (reg >> position) &  bitset_build_mask(0, size);
+}
+
+template <typename Register, typename Value, typename Position, typename BitSet>
+constexpr void bitset_set_value(Register& reg, const Value value, const Position position, const BitSet size) noexcept {
+  reg &= ~bitset_build_mask(position, size);
+  reg |= (value & bitset_build_mask(0, size)) << position;
+}
+
+template <typename Value, typename BitSet>
 [[nodiscard]] constexpr auto bitset_mask(const Value val, const BitSet bitset) noexcept {
   return val & bitset;
 }

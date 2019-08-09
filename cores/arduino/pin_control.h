@@ -52,6 +52,10 @@ namespace LPC176x {
       return -1;
     }
 
+    [[gnu::always_inline, nodiscard]] static constexpr pin_t index_from_adc_channnel(uint8_t channel) {
+      return adc_pin_table[channel];
+    }
+
     /**
      * GPIO Pin
      */
@@ -62,7 +66,7 @@ namespace LPC176x {
       return *reinterpret_cast<gpio_block*>(gpio_address());
     }
     [[gnu::always_inline]] inline void toggle() {
-      set(!get());
+      gpio_reg().reg_control ^= gpio_mask();
     }
     [[gnu::always_inline]] inline void set() {
       gpio_reg().reg_set = gpio_mask();
@@ -76,7 +80,6 @@ namespace LPC176x {
     [[gnu::always_inline]] inline void clear() {
       gpio_reg().reg_clear = gpio_mask();
     }
-
     [[gnu::always_inline]] inline void direction(const bool direction) {
       gpio_reg().reg_dir = direction ? gpio_reg().reg_dir | gpio_mask() : gpio_reg().reg_dir & ~gpio_mask();
     }
@@ -93,7 +96,6 @@ namespace LPC176x {
     /**
      *  GPIO Port
      */
-
     [[gnu::always_inline]] inline void port_mask(const uint32_t mask) {
       gpio_reg().reg_mask = mask;
     }
@@ -133,6 +135,7 @@ namespace LPC176x {
       return (function_reg() & function_mask()) >> function_bit();
     }
     [[gnu::always_inline]] inline void enable_adc() {
+      mode(PinMode::TRISTATE);
       function_reg() &= ~function_mask();
       function_reg() |= function_bits_adc[function_reg_id()] << function_bit();
     }
@@ -183,17 +186,23 @@ namespace LPC176x {
     /**
      * Function compatibility flags
      */
-    [[gnu::always_inline]] constexpr bool is_interrupt_capable() const {
+    [[gnu::always_inline, nodiscard]] constexpr bool is_interrupt_capable() const {
       return gpio_reg_id == 0 || gpio_reg_id == 2;
     }
-    [[gnu::always_inline]] constexpr bool is_valid() const {
+    [[gnu::always_inline, nodiscard]] constexpr bool is_valid() const {
       return valid_pin();
     }
-    [[gnu::always_inline]] constexpr uint8_t has_adc() const {
+    [[gnu::always_inline, nodiscard]] constexpr bool has_adc() const {
       return adc_channel();
     }
-    [[gnu::always_inline]] constexpr uint8_t has_pwm() const {
+    [[gnu::always_inline, nodiscard]] constexpr uint8_t get_adc_channel() const {
+      return adc_channel() - 1;
+    }
+    [[gnu::always_inline, nodiscard]] constexpr uint8_t has_pwm() const {
       return pwm_channel();
+    }
+    [[gnu::always_inline, nodiscard]] constexpr uint8_t get_pwm_channel() const {
+      return pwm_channel() - 1;
     }
 
   private:
@@ -223,9 +232,9 @@ namespace LPC176x {
     [[gnu::always_inline]] constexpr uint8_t adc_channel() const {
       switch (gpio_reg_bit) {
         case 2:
-          return gpio_reg_id == 0 ? 7 : 0;
+          return gpio_reg_id == 0 ? 8 : 0;
         case 3:
-          return gpio_reg_id == 0 ? 6 : 0;
+          return gpio_reg_id == 0 ? 7 : 0;
         case 23:
           return gpio_reg_id == 0 ? 1 : 0;
         case 24:
@@ -241,6 +250,8 @@ namespace LPC176x {
       }
       return 0;
     }
+    static constexpr std::array<pin_t, 8> adc_pin_table { 23, 24, 25, 26, (1 << 5) | 30, (1 << 5) | 31, 3, 2 };
+
     [[gnu::always_inline]] constexpr uint8_t pwm_channel() const {
       switch (gpio_reg_id) {
         case 1:
@@ -268,37 +279,74 @@ namespace LPC176x {
       }
     }
   };
+}
 
-  struct pin_control {
-    [[gnu::always_inline]] inline static void function(const pin_t pin, const uint8_t func) {
-      pin_type{pin}.function(func);
-    }
-    [[gnu::always_inline]] inline static uint8_t function(const pin_t pin) {
-      return pin_type{pin}.function();
-    }
-    [[gnu::always_inline]] inline static void mode(const pin_t pin, const PinMode pinmode) {
-      pin_type{pin}.mode(pinmode);
-    }
-    [[gnu::always_inline]] inline static PinMode mode(const pin_t pin) {
-      return pin_type{pin}.mode();
-    }
-    [[gnu::always_inline]] inline static void mode_od(const pin_t pin, const PinMode pinmode) {
-      pin_type{pin}.mode_od(pinmode);
-    }
-    [[gnu::always_inline]] inline static bool mode_od(const pin_t pin) {
-      return pin_type{pin}.mode_od();
-    }
-  };
+using LPC176x::pin_t;
+using LPC176x::PinMode;
+/**
+ *   PIN FUNCTION LPC176x::pin_type wrapper
+ */
 
-  struct gpio {
-    [[gnu::always_inline]] inline static void port_mask(const uint8_t port, const uint32_t bitset) {
-      pin_type{port, 0}.port_mask(bitset);
-    }
-    [[gnu::always_inline]] inline static void port_set(const uint8_t port, const uint32_t bitset) {
-      pin_type{port, 0}.port_set(bitset);
-    }
-    [[gnu::always_inline]] inline static void port_clear(const uint8_t port, const uint32_t bitset) {
-      pin_type{port, 0}.port_clear(bitset);
-    }
-  };
+[[gnu::always_inline, nodiscard]] constexpr uint8_t pin_port(const pin_t pin) {
+  return LPC176x::pin_type{pin}.port();
+}
+
+[[gnu::always_inline, nodiscard]] constexpr  uint8_t pin_bit(const pin_t pin) {
+  return LPC176x::pin_type{pin}.bit();
+}
+
+[[gnu::always_inline, nodiscard]] constexpr pin_t pin_index(const pin_t pin) {
+  return LPC176x::pin_type{pin}.index();
+}
+
+[[gnu::always_inline, nodiscard]] constexpr bool pin_is_valid(const pin_t pin) {
+  return LPC176x::pin_type{pin}.is_valid();
+}
+
+[[gnu::always_inline, nodiscard]] constexpr bool pin_has_adc(const pin_t pin) {
+  return LPC176x::pin_type{pin}.has_adc();
+}
+
+[[gnu::always_inline, nodiscard]] constexpr uint8_t pin_get_adc_channel(const pin_t pin) {
+  return LPC176x::pin_type{pin}.get_adc_channel();
+}
+
+[[gnu::always_inline, nodiscard]] inline bool pin_adc_enabled(const pin_t pin) {
+  return LPC176x::pin_type{pin}.adc_enabled();
+}
+
+[[gnu::always_inline]] inline void pin_set_mode(const pin_t pin, const PinMode mode) {
+  LPC176x::pin_type{pin}.mode(mode);
+}
+
+[[gnu::always_inline]] inline bool pin_get_mode(const pin_t pin) {
+  return LPC176x::pin_type{pin}.mode();
+}
+
+[[gnu::always_inline]] inline void pin_enable_adc(const pin_t pin) {
+  LPC176x::pin_type{pin}.enable_adc();
+}
+
+[[gnu::always_inline]] inline void pin_enable_adc_by_channel(const uint8_t channel) {
+  LPC176x::pin_type{LPC176x::pin_type::index_from_adc_channnel(channel)}.enable_adc();
+}
+
+[[gnu::always_inline, nodiscard]] inline bool pin_pwm_enabled(const pin_t pin) {
+  return LPC176x::pin_type{pin}.pwm_enabled();
+}
+
+[[gnu::always_inline, nodiscard]] constexpr uint8_t pin_has_pwm(const pin_t pin) {
+  return LPC176x::pin_type{pin}.has_pwm();
+}
+
+[[gnu::always_inline, nodiscard]] constexpr uint8_t pin_get_pwm_channel(const pin_t pin) {
+  return LPC176x::pin_type{pin}.get_pwm_channel();
+}
+
+[[gnu::always_inline]] inline void pin_enable_pwm(const pin_t pin) {
+  LPC176x::pin_type{pin}.enable_pwm();
+}
+
+[[gnu::always_inline]] inline void pin_enable_feature(const pin_t pin, uint8_t feature) {
+  LPC176x::pin_type{pin}.function(feature);
 }

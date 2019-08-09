@@ -6,6 +6,7 @@ extern "C" {
 
 #include <pinmapping.h>
 #include <pwm.h>
+#include <adc.h>
 
  __attribute__ ((weak)) void SysTick_Callback() {}
 
@@ -41,7 +42,11 @@ extern "C" {
 }
 
 int main(void) {
-  // initialise PWM timers
+  // Turn on and initialise ADC in burst mode
+  LPC176x::adc_hardware.init();
+  LPC176x::adc_hardware.burst_start();
+
+  // Initialise PWM timers
   pwm_init();
 
   setup();

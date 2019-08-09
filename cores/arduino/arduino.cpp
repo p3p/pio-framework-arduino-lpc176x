@@ -73,20 +73,8 @@ void pinMode(const pin_t pin, const uint8_t mode) {
     gpio_set_input(pin);
     if(mode == INPUT_PULLUP) pin_set_mode(pin, PinMode::PULLUP);
     else if(mode == INPUT_PULLDOWN) pin_set_mode(pin, PinMode::PULLDOWN);
+    else pin_set_mode(pin, PinMode::TRISTATE);
   }
-}
-
-void digitalWrite(pin_t pin, uint8_t pin_status) {
-  if (!pin_is_valid(pin)) return;
-
-  gpio_set(pin, pin_status);
-  // Set pin mode on every write (Arduino version does this)
-  gpio_set_output(pin);
-}
-
-bool digitalRead(pin_t pin) {
-  if (!pin_is_valid(pin)) return false;
-  return gpio_get(pin);
 }
 
 void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255: HIGH
@@ -100,12 +88,20 @@ void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255
   }
 }
 
-uint16_t analogRead(pin_t adc_pin) {
-  if (analogInputToDigitalPin(adc_pin) == -1 || LPC176x::ADC<>::busy()) return 0;
-  LPC176x::ADC<>::start_conversion(adc_pin);
-  while (!LPC176x::ADC<>::finished_conversion());  // Wait for conversion to finish
-  return LPC176x::ADC<>::get_result();
+uint8_t analog_read_resolution = 10;
+void analogReadResolution(uint8_t resolution) {
+  analog_read_resolution = resolution > 32 ? 32 : resolution;
 }
+
+void analogReference(uint8_t) {
+
+}
+
+uint8_t analogReadResolution() {
+  return analog_read_resolution;
+}
+
+
 
 // **************************
 // Persistent Config Storage

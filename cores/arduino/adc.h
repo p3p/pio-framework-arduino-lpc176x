@@ -1,10 +1,200 @@
 #pragma once
 
-#include <stdint.h>
 #include <LPC17xx.h>
-#include <gpio.h>
+
+#include <cstdint>
+#include <pinmapping.h>
+#include <bit_manipulation.h>
 
 namespace LPC176x {
+
+struct  adc_control {
+  struct adc_register_block {
+    volatile uint32_t control;          // 00
+    volatile uint32_t global_data;      // 04
+    uint32_t unused;                    // 08
+    uint32_t interrupt_enable;          // 0C
+    volatile uint32_t channel_data[8];  // 10,14,18,1C,20,24,28,2C
+    volatile uint32_t status;           // 30
+    uint32_t trim;                      // 34
+  };
+  static constexpr uint32_t adc_hardware_address = 0x40034000;
+  [[gnu::always_inline]] inline adc_register_block& adc_reg() const {
+    return *reinterpret_cast<adc_register_block*>(adc_hardware_address);
+  }
+
+  /**
+   * Control Register
+   */
+  [[gnu::always_inline, nodiscard]] inline uint8_t selected() {
+    return util::bitset_get_value(adc_reg().control, 0, 8);
+  }
+
+  [[gnu::always_inline, nodiscard]] inline bool selected(const uint8_t channel) const {
+    return util::bit_test(adc_reg().control, channel);
+  }
+
+  [[gnu::always_inline]] inline void select(const uint8_t channel) {
+    adc_reg().control |= (0x1 << channel);
+  }
+
+  [[gnu::always_inline]] inline void deselect(const uint8_t channel) {
+    adc_reg().control &= ~(0x1 << channel);
+  }
+
+  [[gnu::always_inline]] inline void select_clear() {
+    util::bitset_set_value(adc_reg().control, 0, 0, 8);
+  }
+
+  [[gnu::always_inline]] inline void select_set(const uint8_t channels) {
+    util::bitset_set_value(adc_reg().control, channels, 0, 8);
+  }
+
+  [[gnu::always_inline, nodiscard]] inline uint8_t clock_divider() const {
+    return util::bitset_get_value(adc_reg().control, 8, 8);
+  }
+
+  [[gnu::always_inline]] inline void clock_divider(const uint8_t divider) {
+    util::bitset_set_value(adc_reg().control, divider, 8, 8);
+  }
+
+  [[gnu::always_inline]] inline void burst(const bool value) {
+    util::bitset_set_value(adc_reg().control, value, 16, 1);
+  }
+
+  [[gnu::always_inline, nodiscard]] inline bool burst() const {
+    return util::bitset_get_value(adc_reg().control, 16, 1);
+  }
+
+  [[gnu::always_inline]] inline void power(const bool value) {
+    util::bitset_set_value(adc_reg().control, value, 21, 1);
+  }
+
+  [[gnu::always_inline, nodiscard]] inline bool power() const {
+    return util::bitset_get_value(adc_reg().control, 21, 1);
+  }
+
+  [[gnu::always_inline]] inline void start(const uint8_t value) {
+    util::bitset_set_value(adc_reg().control, value, 24, 3);
+  }
+
+  [[gnu::always_inline, nodiscard]] inline uint8_t start() const {
+    return util::bitset_get_value(adc_reg().control, 24, 3);
+  }
+
+  [[gnu::always_inline]] inline void edge(const bool value) {
+    util::bitset_set_value(adc_reg().control, value, 27, 1);
+  }
+
+  [[gnu::always_inline, nodiscard]] inline bool edge() const {
+    return util::bitset_get_value(adc_reg().control, 27, 1);
+  }
+
+  /**
+   * Global Data Register
+   */
+  [[gnu::always_inline, nodiscard]] inline uint16_t global_result() const {
+    return util::bitset_get_value(adc_reg().global_data, 4, 12);
+  }
+  [[gnu::always_inline, nodiscard]] inline uint8_t global_channel() const {
+    return util::bitset_get_value(adc_reg().global_data, 24, 3);
+  }
+  [[gnu::always_inline, nodiscard]] inline bool global_overrun() const {
+    return util::bitset_get_value(adc_reg().global_data, 30, 1);
+  }
+  [[gnu::always_inline, nodiscard]] inline bool global_done() const {
+    return util::bitset_get_value(adc_reg().global_data, 31, 1);
+  }
+
+  /**
+   *  Interrupt Enable Register
+   */
+  [[gnu::always_inline, nodiscard]] inline bool interrupt_enabled(const uint8_t channel) const {
+    return util::bitset_get_value(adc_reg().interrupt_enable, channel, 1);
+  }
+  [[gnu::always_inline]] inline void interrupt_enable(const uint8_t channel, const bool value) {
+    util::bitset_set_value(adc_reg().interrupt_enable, value, channel, 1);
+  }
+  [[gnu::always_inline, nodiscard]] inline bool global_interrupt_enabled() const {
+    return util::bitset_get_value(adc_reg().interrupt_enable, 8, 1);
+  }
+  [[gnu::always_inline]] inline void global_interrupt_enable(const bool value) {
+    util::bitset_set_value(adc_reg().interrupt_enable, value, 8, 1);
+  }
+
+  /**
+   *  Data Registers
+   */
+  [[gnu::always_inline, nodiscard]] inline uint16_t result(const uint8_t channel) const {
+    return util::bitset_get_value(adc_reg().channel_data[channel], 4, 12);
+  }
+  [[gnu::always_inline, nodiscard]] inline bool overrun(const uint8_t channel) const {
+    return util::bitset_get_value(adc_reg().channel_data[channel], 30, 1);
+  }
+  [[gnu::always_inline, nodiscard]] inline bool done(const uint8_t channel) const {
+    return util::bitset_get_value(adc_reg().channel_data[channel], 31, 1);
+  }
+
+  /**
+   * Status Register
+   */
+  [[gnu::always_inline, nodiscard]] inline uint8_t overrun() const {
+    return util::bitset_get_value(adc_reg().status, 8, 8);
+  }
+  [[gnu::always_inline, nodiscard]] inline uint8_t done() const {
+    return util::bitset_get_value(adc_reg().status, 8, 0);
+  }
+  [[gnu::always_inline, nodiscard]] inline bool interrupt() const {
+    return util::bitset_get_value(adc_reg().status, 1, 16);
+  }
+
+  void init() {
+    LPC_SC->PCONP |= (1 << 12);      // Enable CLOCK for internal ADC controller
+    LPC_SC->PCLKSEL0 &= ~(0x3 << 24);
+    LPC_SC->PCLKSEL0 |= (0x1 << 24); // 0: 25MHz, 1: 100MHz, 2: 50MHz, 3: 12.5MHZ to ADC clock divider
+    configure();
+  }
+  void configure() {
+    start(0);
+    select_clear();
+    clock_divider(255);
+    burst(false);
+    power(true);
+  }
+  /**
+   * Burst mode functions
+   */
+  [[gnu::always_inline]] inline void burst_start() {
+    start(0);
+    global_interrupt_enable(0);
+    burst(true);
+  }
+  [[gnu::always_inline]] inline void burst_stop() {
+    start(0);
+    select_clear();
+    burst(false);
+  }
+
+  /**
+   * Oneshot mode function
+   */
+  [[gnu::always_inline]] inline void oneshot_start(uint8_t channel) {
+    select(channel);
+    start(1);
+  }
+  [[gnu::always_inline, nodiscard]] inline bool oneshot_ready() {
+    return global_done();
+  }
+  [[gnu::always_inline, nodiscard]] inline bool oneshot_busy() {
+    return selected();
+  }
+  [[gnu::always_inline, nodiscard]] inline uint16_t oneshot_read() {
+    select_clear();
+    return global_result();
+  }
+};
+
+extern adc_control& adc_hardware;
 
 //ADC_MEDIAN_FILTER_SIZE (23)
 // Higher values increase step delay (phase shift),
@@ -19,52 +209,8 @@ namespace LPC176x {
 // K = 6, 565 samples, 500Hz sample rate, 1.13s convergence on full range step
 // Memory usage per ADC channel (bytes): 4 (32 Bytes for 8 channels)
 
-// struct [[gnu::packed]] adc_control {
-//   struct adc_register {   // 0x40034000
-//     struct control_register {     // 00
-//       uint8_t select;
-//       uint8_t clock_divider;
-//       uint8_t burtst    : 1;
-//       uint8_t reserved0 : 4;
-//       uint8_t power     : 1;
-//       uint8_t reserved1 : 2;
-//       uint8_t start     : 3;
-//       uint8_t edge      : 1;
-//       uint8_t reserved2 : 4;
-//     } control;
-//     static_assert(sizeof(control_register) == 4);
-//     struct [[gnu::packed]] global_data_register { // 04
-//       uint8_t reserved0 : 4;
-//       uint16_t result   : 12;
-//       uint8_t reserved1;
-//       uint8_t channel   : 3;
-//       uint8_t reserved2 : 3;
-//       bool overrun      : 1;
-//       bool done         : 1;
-//     } global_data;
-//     static_assert(sizeof(global_data_register) == 4);
-//     uint32_t unused;                   // 08
-//     struct [[gnu::packed]] interrupt_enable_register { // 0C
-//       struct [[gnu::packed]] int_bitset {
-//         bool interrupt : 1;
-//       } conversion_interrupt[8];
-//       bool global_interrupt_enable : 1;
-//       uint32_t reserved : 23;
-//     } interrupt_enable;
-//     static_assert(sizeof(interrupt_enable_register) == 4);
-//     uint32_t channel_data[8];     // 10,14,18,1C,20,24,28,2C
-//     uint32_t status;
-//     uint32_t trim;
-//   };
-//   static_assert(sizeof(adc_register) == 0x40034038 - 0x40034000);
-// };
-
-
 template <uint8_t ADC_LOWPASS_K_VALUE = 0, uint16_t ADC_MEDIAN_FILTER_SIZE = 0>
 struct ADC {
-  static constexpr uint32_t ADC_DONE = 0x80000000;
-  static constexpr uint32_t ADC_OVERRUN = 0x40000000;
-
   // Sourced from https://embeddedgurus.com/stack-overflow/tag/median-filter/
   struct MedianFilter {
     static constexpr uint32_t STOPPER = 0;        // Smaller than any datum
@@ -78,7 +224,7 @@ struct ADC {
     Pair small = {nullptr, STOPPER};          // Chain stopper
     Pair big = {&small, 0};                   // Pointer to head (largest) of linked list.
 
-    uint16_t update(uint16_t datum) {
+    [[gnu::optimize("O3")]] uint16_t update(uint16_t datum) {
       Pair *successor;                        // Pointer to successor of replaced data item
       Pair *scan;                             // Pointer used to scan down the sorted list
       Pair *scanold;                          // Previous value of scan
@@ -151,68 +297,34 @@ struct ADC {
 
   struct LowpassFilter {
     uint32_t data_delay = 0x7FF << ADC_LOWPASS_K_VALUE;
-    uint16_t update(uint16_t value) {
+    [[gnu::always_inline]] inline uint16_t update(uint16_t value) {
       data_delay = data_delay - (data_delay >> ADC_LOWPASS_K_VALUE) + value;
       return (uint16_t)(data_delay >> ADC_LOWPASS_K_VALUE);
     }
   };
 
-  static void init() {
-    LPC_SC->PCONP |= (1 << 12);      // Enable CLOCK for internal ADC controller
-    LPC_SC->PCLKSEL0 &= ~(0x3 << 24);
-    LPC_SC->PCLKSEL0 |= (0x1 << 24); // 0: 25MHz, 1: 100MHz, 2: 50MHz, 3: 12.5MHZ to ADC clock divider
-    LPC_ADC->ADCR = (0 << 0)         // SEL: 0 = no channels selected
-                  | (0xFF << 8)      // select slowest clock for A/D conversion 150 - 190 uS for a complete conversion
-                  | (0 << 16)        // BURST: 0 = software control
-                  | (0 << 17)        // CLKS: not applicable
-                  | (1 << 21)        // PDN: 1 = operational
-                  | (0 << 24)        // START: 0 = no start
-                  | (0 << 27);       // EDGE: not applicable
+  static void enable_channel(const pin_t pin) {
+    if (!pin_is_valid(pin) || !pin_has_adc(pin)) return;
+    pin_enable_adc(pin);
+    adc_hardware.select(pin_get_adc_channel(pin));
   }
 
-  static void enable_channel(const int ch) {
-    pin_t pin = analogInputToDigitalPin(ch);
-    if (pin_is_valid(pin) && pin_has_adc(pin)) pin_enable_adc(pin);
-  }
-
-  static inline bool busy() {
-    return LPC_ADC->ADCR & 0xFF;
-  }
-
-  static inline void start_conversion(const uint8_t ch) {
-    if (analogInputToDigitalPin(ch) == -1) return;
-    LPC_ADC->ADCR &= ~0xFF; // Reset
-    LPC_ADC->ADCR |= (1 << ch); // Select Channel
-    LPC_ADC->ADCR |= (1 << 24); // Start conversion
-  }
-
-  static inline bool finished_conversion(void) {
-    return LPC_ADC->ADGDR & ADC_DONE;
-  }
-
-  static uint16_t get_result(void) {
-    const uint32_t adgdr = LPC_ADC->ADGDR;
-    LPC_ADC->ADCR &= ~(1 << (24)); // Stop conversion
-    if (adgdr & ADC_OVERRUN) return 0;
-    LPC_ADC->ADCR &= ~(0xFF); // clear channel
-
-    uint16_t data = (adgdr >> 4) & 0xFFF;      // copy the 12bit data value
+  [[gnu::optimize("O3"), gnu::always_inline]] static inline uint16_t read(const pin_t pin) {
+    if (!pin_is_valid(pin) || !pin_has_adc(pin)) return 0;
+    uint8_t adc_channel = pin_get_adc_channel(pin);
+    uint16_t data = adc_hardware.result(adc_channel) << 4; // 12 - 16bit conversion before filters
 
     if constexpr (ADC_MEDIAN_FILTER_SIZE > 0 || ADC_LOWPASS_K_VALUE > 0) {
-      uint8_t adc_channel = (adgdr >> 24) & 0x7; // copy the  3bit used channel
-
       if constexpr (ADC_MEDIAN_FILTER_SIZE > 0) {
         static MedianFilter median_filter[NUM_ANALOG_INPUTS];
         data = median_filter[adc_channel].update(data);
       }
-
       if constexpr (ADC_LOWPASS_K_VALUE > 0) {
         static LowpassFilter lowpass_filter[NUM_ANALOG_INPUTS];
         data = lowpass_filter[adc_channel].update(data);
       }
     }
-
-    return ((data >> 2) & 0x3FF);    // return 10bit value as Marlin expects
+    return data;
   }
 };
 

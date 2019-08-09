@@ -1,7 +1,7 @@
 #include <LPC17xx.h>
 
 #include <bit_manipulation.h>
-#include <gpio.h>
+#include <pinmapping.h>
 
 pin_t tone_pin = P_NC;
 volatile int32_t toggles = 0;
