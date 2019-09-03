@@ -108,6 +108,7 @@ public:
   operator bool() { return host_connected; }
 
   void begin(int32_t baud) { }
+  void end() {}
 
   int16_t peek() {
     uint8_t value;

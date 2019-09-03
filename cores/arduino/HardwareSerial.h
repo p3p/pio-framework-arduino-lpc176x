@@ -166,6 +166,10 @@ public:
     Baudrate = baudrate;
   }
 
+  void end(){
+    // todo: actually end
+  }
+
   int16_t peek() {
     int16_t byte = -1;
 
@@ -246,6 +250,10 @@ public:
 
   size_t available() {
     return (RxQueueWritePos + RXB_SIZE - RxQueueReadPos) % RXB_SIZE;
+  }
+
+  size_t availableForWrite() {
+    return TXB_SIZE - (TxQueueWritePos + TXB_SIZE - TxQueueReadPos) % TXB_SIZE;
   }
 
   void flush() {
