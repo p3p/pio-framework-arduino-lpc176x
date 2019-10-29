@@ -59,7 +59,7 @@ public:
     return true;
   }
 
-  std::size_t read(T* dst, std::size_t length) {
+  [[gnu::always_inline, gnu::optimize("O3")]] inline std::size_t read(T* dst, std::size_t length) {
     length = std::min(length, available());
     const std::size_t length1 = std::min(length, buffer_size - index_read);
     memcpy(dst, (char*)buffer + index_read, length1);
@@ -68,7 +68,7 @@ public:
     return length;
   }
 
-  std::size_t write(T* src, std::size_t length) {
+  [[gnu::always_inline, gnu::optimize("O3")]] inline std::size_t write(T* src, std::size_t length) {
     length = std::min(length, free());
     const std::size_t length1 = std::min(length, buffer_size - index_write);
     memcpy((char*)buffer + index_write, src, length1);

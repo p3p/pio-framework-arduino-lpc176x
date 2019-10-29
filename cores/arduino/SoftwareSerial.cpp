@@ -153,7 +153,7 @@ inline void SoftwareSerial::setRXTX(bool input) {
 }
 
 
-inline void SoftwareSerial::send() {
+[[gnu::always_inline, gnu::optimize("O3")]] inline void SoftwareSerial::send() {
   if (--tx_tick_cnt <= 0) {
     if (tx_bit_cnt++ < 10 ) {
       // send data (including start and stop bits)
@@ -183,7 +183,7 @@ inline void SoftwareSerial::send() {
 //
 // The receive routine called by the interrupt handler
 //
-inline void SoftwareSerial::recv() {
+[[gnu::always_inline, gnu::optimize("O3")]] inline void SoftwareSerial::recv() {
   if (--rx_tick_cnt <= 0) {
     uint8_t inbit = gpio_get(_receivePin);
     if (rx_bit_cnt == -1) {
@@ -229,12 +229,13 @@ inline void SoftwareSerial::recv() {
 //
 
 /* static */
-inline void SoftwareSerial::handle_interrupt() {
+[[gnu::always_inline, gnu::optimize("O3")]] inline void SoftwareSerial::handle_interrupt() {
   if (active_in) active_in->recv();
   if (active_out) active_out->send();
 }
 
-extern "C" void RIT_IRQHandler(void) {
+extern "C" 
+[[gnu::optimize("O3")]] void RIT_IRQHandler(void) {
   LPC_RIT->RICTRL |= 1;
   SoftwareSerial::handle_interrupt();
 }
