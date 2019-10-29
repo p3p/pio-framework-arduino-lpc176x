@@ -46,9 +46,7 @@ unsigned short CDC_SerialState = 0;
 
 extern CDCSerial UsbSerial;
 
-__attribute__((weak)) bool CDC_RecvCallback(const char byte) {
-  return true;
-}
+__attribute__((weak)) bool CDC_RecvCallback(const char byte);
 
 /*----------------------------------------------------------------------------
  CDC_QueueDMAIO
@@ -73,11 +71,16 @@ void CDC_WrOutBuf() {
   if (CDC_OutContents <= UsbSerial.receive_buffer.free()) {
     uint32_t bytesToWrite = CDC_OutContents;
     uint8_t * buffer = BulkBufOut;
-    while (bytesToWrite--) {
-      if(CDC_RecvCallback(*buffer)) {
-        if (!UsbSerial.receive_buffer.write(*buffer++))
-          _DBG("Overflow\n");
+    // if there is a callback required each byte needs passed to it individualy
+    if(CDC_RecvCallback) {
+      while (bytesToWrite--) {
+        if(CDC_RecvCallback(*buffer)) {
+          if (!UsbSerial.receive_buffer.write(*buffer++))
+            _DBG("Overflow\n");
+        }
       }
+    } else {
+      UsbSerial.receive_buffer.write(buffer, bytesToWrite);
     }
     CDC_OutContents = CDC_BUFFER_EMPTY;
   }
@@ -270,9 +273,7 @@ void CDC_BulkIn(void) {
     if (numBytesAvail > 0) {
       // We avoid needing to send a zero length packet by never sending a full one
       numBytesAvail = numBytesAvail > (USB_CDC_BUFSIZE - 1) ? (USB_CDC_BUFSIZE - 1) : numBytesAvail;
-      for(uint32_t i = 0; i < numBytesAvail; ++i) {
-        UsbSerial.transmit_buffer.read(&BulkBufIn[i]);
-      }
+      UsbSerial.transmit_buffer.read(BulkBufIn, numBytesAvail);
       CDC_InContents = CDC_BUFFER_WAITING;
       CDC_QueueDMAIO(CDC_DEP_IN, &BulkBufIn[0], numBytesAvail);
     }
