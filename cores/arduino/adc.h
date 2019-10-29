@@ -170,7 +170,7 @@ struct ADC {
     return LPC_ADC->ADGDR & ADC_DONE;
   }
 
-  static uint16_t get_result(void) {
+  static uint16_t get_result_12bit(void) {
     const uint32_t adgdr = LPC_ADC->ADGDR;
     LPC_ADC->ADCR &= ~(1 << (24)); // Stop conversion
     if (adgdr & ADC_OVERRUN) return 0;
@@ -191,7 +191,12 @@ struct ADC {
       }
     }
 
-    return ((data >> 2) & 0x3FF);    // return 10bit value as Marlin expects
+    return data & 0x0FFF;
+  }
+
+  // Arduino-compatible 10-bit
+  static uint16_t get_result(void) {
+    return (get_result_12bit() >> 2) & 0x03FF;
   }
 };
 
