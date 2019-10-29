@@ -26,6 +26,8 @@
 #ifndef __LPC17xx_H__
 #define __LPC17xx_H__
 
+#pragma GCC system_header
+
 /*
  * ==========================================================================
  * ---------- Interrupt Number Definition -----------------------------------

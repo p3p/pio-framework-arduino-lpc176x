@@ -43,12 +43,12 @@
  * S size of the buffer (must be power of 2)
  */
 
-template <typename T, uint32_t S> class RingBuffer {
+template <typename T, std::size_t S> class RingBuffer {
 public:
   RingBuffer() {index_read = index_write = 0;}
 
-  uint32_t available() const {return mask(index_write - index_read);}
-  uint32_t free() const {return size() - available();}
+  std::size_t available() const {return mask(index_write - index_read);}
+  std::size_t free() const {return size() - available();}
   bool empty() const {return index_read == index_write;}
   bool full() const {return next(index_write) == index_read;}
   void clear() {index_read = index_write = 0;}
@@ -59,39 +59,57 @@ public:
     return true;
   }
 
-  uint32_t read(T *const value) {
+  std::size_t read(T* dst, std::size_t length) {
+    length = std::min(length, available());
+    const std::size_t length1 = std::min(length, buffer_size - index_read);
+    memcpy(dst, (char*)buffer + index_read, length1);
+    memcpy(dst + length1, (char*)buffer, length - length1);
+    index_read = mask(index_read + length);
+    return length;
+  }
+
+  std::size_t write(T* src, std::size_t length) {
+    length = std::min(length, free());
+    const std::size_t length1 = std::min(length, buffer_size - index_write);
+    memcpy((char*)buffer + index_write, src, length1);
+    memcpy((char*)buffer, src + length1, length - length1);
+    index_write = mask(index_write + length);
+    return length;
+  }
+
+  std::size_t read(T *const value) {
     if (value == nullptr || empty()) return 0;
     *value = buffer[index_read];
     index_read = next(index_read);
     return 1;
   }
 
-  uint32_t write(const T value) {
-    uint32_t next_head = next(index_write);
+  std::size_t write(const T value) {
+    std::size_t next_head = next(index_write);
     if (next_head == index_read) return 0;     // buffer full
     buffer[index_write] = value;
     index_write = next_head;
     return 1;
   }
 
-  constexpr uint32_t size() const {
+  constexpr std::size_t size() const {
     return buffer_size - 1;
   }
 
 private:
-  inline uint32_t mask(uint32_t val) const {
+  inline std::size_t mask(std::size_t val) const {
     return val & buffer_mask;
   }
 
-  inline uint32_t next(uint32_t val) const {
+  inline std::size_t next(std::size_t val) const {
     return mask(val + 1);
   }
 
-  static const uint32_t buffer_size = S;
-  static const uint32_t buffer_mask = buffer_size - 1;
+  static const std::size_t buffer_size = S;
+  static const std::size_t buffer_mask = buffer_size - 1;
   volatile T buffer[buffer_size];
-  volatile uint32_t index_write;
-  volatile uint32_t index_read;
+  volatile std::size_t index_write;
+  volatile std::size_t index_read;
 };
 
 /**
@@ -121,6 +139,34 @@ public:
     return (ret ? value : -1);
   }
 
+  size_t readBytes(uint8_t* dst, size_t length) {
+    return readBytes(dst, length);
+  }
+
+  size_t readBytes(char* dst, size_t length) {
+    size_t buffered = receive_buffer.read((uint8_t*)dst, length);
+    const uint32_t usb_rx_timeout = millis() + USBCDCTIMEOUT;
+    while (buffered != length && util::pending(millis(), usb_rx_timeout)) {
+      if (!host_connected) return 0;
+      CDC_FillBuffer(receive_buffer.free());
+      buffered += receive_buffer.read((uint8_t*)dst + buffered, length - buffered);
+    }
+    CDC_FillBuffer(receive_buffer.free());
+    return buffered;
+  }
+
+  size_t write(char* src, size_t length) {
+    size_t buffered = transmit_buffer.write((uint8_t*)src, length);
+    const uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
+    while (buffered != length && util::pending(millis(), usb_tx_timeout)) {
+      if (!host_connected) return 0;
+      buffered += transmit_buffer.write((uint8_t*)src + buffered, length - buffered);
+      CDC_FlushBuffer();
+    }
+    CDC_FlushBuffer();
+    return buffered;
+  }
+
   size_t write(const uint8_t c) {
     if (!host_connected) return 0;          // Do not fill buffer when host disconnected
     const uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
@@ -133,16 +179,17 @@ public:
   }
 
   size_t available() {
-    return (size_t)receive_buffer.available();
+    return receive_buffer.available();
   }
 
+  // todo: change to conform to Arduino 1.0?
   void flush() {
     receive_buffer.clear();
     CDC_FillBuffer(receive_buffer.free());
   }
 
   uint8_t availableForWrite(void) {
-    return transmit_buffer.free() > 255 ? 255 : (uint8_t)transmit_buffer.free();
+    return min(transmit_buffer.free(), size_t(255));
   }
 
   void flushTX(void) {
