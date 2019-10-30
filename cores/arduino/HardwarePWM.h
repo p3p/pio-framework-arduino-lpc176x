@@ -21,18 +21,20 @@
 #include <lpc17xx_clkpwr.h>
 #include <lpc17xx_pwm.h>
 #include <gpio.h>
+#include <bit_manipulation.h>
+#include <registers.h>
 
 class HardwarePWM {
   // return the bits to attach the PWM hardware depending on port using a lookup table
   [[nodiscard]] static constexpr int8_t pwm_feature_index(const pin_t pin) noexcept {
     constexpr std::array<int8_t, 5> lookup {-1, 2, 1, 3, -1};
-    return lookup[LPC1768_PIN_PORT(pin)];
+    return lookup[pin_port(pin)];
   }
 
   // return a reference to a PWM timer register using a lookup table as they are not contiguous
   [[nodiscard]] static constexpr uint32_t match_register_lookup(const pin_t pin) noexcept {
     constexpr uint32_t MR0_OFFSET = 6, MR4_OFFSET = 16;
-    return LPC_PWM1_BASE + (LPC1768_PIN_PWM(pin) > 3 ? (MR4_OFFSET + LPC1768_PIN_PWM(pin) - 4) : (MR0_OFFSET + LPC1768_PIN_PWM(pin))) * sizeof(uint32_t);
+    return LPC_PWM1_BASE + (pin_has_pwm(pin) > 3 ? (MR4_OFFSET + pin_has_pwm(pin) - 4) : (MR0_OFFSET + pin_has_pwm(pin))) * sizeof(uint32_t);
   }
 
   // return a reference to a PWM timer register using a lookup table as they are not contiguous
@@ -42,21 +44,21 @@ class HardwarePWM {
 
   // generate a unique bit for each hardware PWM capable pin
   [[nodiscard]] static constexpr uint8_t get_pin_id(const pin_t pin) noexcept {
-    return (LPC1768_PIN_PORT(pin) * 6) + (LPC1768_PIN_PWM(pin) - 1);
+    return (pin_port(pin) * 6) + (pin_has_pwm(pin) - 1);
   }
 
   // update the bitset an activate hardware pwm channel for output
   static inline void activate_channel(const pin_t pin) {
     util::bit_set(active_pins, get_pin_id(pin));         // mark the pin as active
     util::bit_clear(idle_pins, get_pin_id(pin));
-    util::bit_set(LPC_PWM1->PCR, 8 + LPC1768_PIN_PWM(pin));  // turn on the pins PWM output (8 offset + PWM channel)
-    pin_enable_feature(pin, pwm_feature_index(pin));
+    util::bit_set(LPC_PWM1->PCR, 8 + pin_has_pwm(pin));  // turn on the pins PWM output (8 offset + PWM channel)
+    pin_enable_pwm(pin);
   }
 
   // update the bitset and deactivate the hardware pwm channel
   static inline void deactivate_channel(const pin_t pin) {
     util::bit_clear(active_pins, get_pin_id(pin));      // mark pin as inactive
-    if(!channel_active(pin)) util::bit_clear(LPC_PWM1->PCR, 8 + LPC1768_PIN_PWM(pin)); // turn off the PWM output
+    if(!channel_active(pin)) util::bit_clear(LPC_PWM1->PCR, 8 + pin_has_pwm(pin)); // turn off the PWM output
   }
 
   // update the bitset and deactivate the hardware pwm channel
@@ -69,8 +71,8 @@ class HardwarePWM {
 
     // return true if a pwm channel is already attached to a pin
   [[nodiscard]] static constexpr bool channel_active(const pin_t pin) noexcept {
-    const uint32_t channel = LPC1768_PIN_PWM(pin) - 1;
-    return LPC1768_PIN_PWM(pin) && util::bitset_mask(active_pins, util::bitset_value(6 + channel, 2 * 6 + channel, 3 * 6 + channel));
+    const uint32_t channel = pin_has_pwm(pin) - 1;
+    return pin_has_pwm(pin) && util::bitset_mask(active_pins, util::bitset_value(6 + channel, 2 * 6 + channel, 3 * 6 + channel));
   }
 
 public:
@@ -107,12 +109,12 @@ public:
   }
 
   [[nodiscard]] static constexpr bool available(const pin_t pin) noexcept {
-    return LPC1768_PIN_PWM(pin) && !channel_active(pin);
+    return pin_has_pwm(pin) && !channel_active(pin);
   }
 
   // return true if a pin is already attached to PWM hardware
   [[nodiscard]] static constexpr bool active(const pin_t pin) noexcept {
-    return LPC1768_PIN_PWM(pin) && util::bit_test(active_pins, get_pin_id(pin));
+    return pin_has_pwm(pin) && util::bit_test(active_pins, get_pin_id(pin));
   }
 
   static inline void set_frequency(const uint32_t frequency) {
@@ -139,7 +141,7 @@ public:
     //work around for bug if MR1 == MR0
     *match_register_ptr(pin) = value == LPC_PWM1->MR0 ? value + 1 : value;
     // tried to work around latch issue by always setting all bits, was unsuccessful
-    LPC_PWM1->LER = util::bit_value(LPC1768_PIN_PWM(pin));
+    LPC_PWM1->LER = util::bit_value(pin_has_pwm(pin));
 
     // At 0 duty cycle hardware pwm outputs 1 cycle pulses
     // Work around it by disabling the pwm output and setting the pin low util the duty cycle is updated

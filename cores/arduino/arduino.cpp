@@ -65,55 +65,20 @@ void delay(const int msec) {
 // IO functions
 // As defined by Arduino INPUT(0x0), OUTPUT(0x1), INPUT_PULLUP(0x2)
 void pinMode(const pin_t pin, const uint8_t mode) {
-  if (!VALID_PIN(pin)) return;
-
-  PINSEL_CFG_Type config = { LPC1768_PIN_PORT(pin),
-                             LPC1768_PIN_PIN(pin),
-                             PINSEL_FUNC_0,
-                             PINSEL_PINMODE_TRISTATE,
-                             PINSEL_PINMODE_NORMAL };
-  switch (mode) {
-    case INPUT:
-      gpio_set_input(pin);
-      break;
-    case OUTPUT:
-      gpio_set_output(pin);
-      break;
-    case INPUT_PULLUP:
-      gpio_set_input(pin);
-      config.Pinmode = PINSEL_PINMODE_PULLUP;
-      break;
-    case INPUT_PULLDOWN:
-      gpio_set_input(pin);
-      config.Pinmode = PINSEL_PINMODE_PULLDOWN;
-      break;
-    default: return;
+  if (!pin_is_valid(pin)) return;
+  if(mode == OUTPUT) {
+    gpio_set_output(pin);
+    pin_set_mode(pin, PinMode::TRISTATE);
+  } else {
+    gpio_set_input(pin);
+    if(mode == INPUT_PULLUP) pin_set_mode(pin, PinMode::PULLUP);
+    else if(mode == INPUT_PULLDOWN) pin_set_mode(pin, PinMode::PULLDOWN);
+    else pin_set_mode(pin, PinMode::TRISTATE);
   }
-  PINSEL_ConfigPin(&config);
-}
-
-void digitalWrite(pin_t pin, uint8_t pin_status) {
-  if (!VALID_PIN(pin)) return;
-
-  gpio_set(pin, pin_status);
-  pinMode(pin, OUTPUT);  // Set pin mode on every write (Arduino version does this)
-
-  /**
-   * Must be done AFTER the output state is set. Doing this before will cause a
-   * 2uS glitch if writing a "1".
-   *
-   * When the Port Direction bit is written to a "1" the output is immediately set
-   * to the value of the FIOPIN bit which is "0" because of power up defaults.
-   */
-}
-
-bool digitalRead(pin_t pin) {
-  if (!VALID_PIN(pin)) return false;
-  return gpio_get(pin);
 }
 
 void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255: HIGH
-  if (!VALID_PIN(pin)) return;
+  if (!pin_is_valid(pin)) return;
 
   util::limit(pwm_value, 0, 255);
   if (pwm_attach_pin(pin)) {
@@ -123,11 +88,20 @@ void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255
   }
 }
 
-uint16_t analogRead(pin_t adc_pin) {
-  LPC176x::ADC<>::start_conversion(adc_pin);
-  while (!LPC176x::ADC<>::finished_conversion());  // Wait for conversion to finish
-  return LPC176x::ADC<>::get_result();
+uint8_t analog_read_resolution = 10;
+void analogReadResolution(uint8_t resolution) {
+  analog_read_resolution = resolution > 32 ? 32 : resolution;
 }
+
+void analogReference(uint8_t) {
+
+}
+
+uint8_t analogReadResolution() {
+  return analog_read_resolution;
+}
+
+
 
 // **************************
 // Persistent Config Storage

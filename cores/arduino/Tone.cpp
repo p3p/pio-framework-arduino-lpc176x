@@ -1,6 +1,7 @@
+#include <LPC17xx.h>
 
 #include <bit_manipulation.h>
-#include <gpio.h>
+#include <pinmapping.h>
 
 pin_t tone_pin = P_NC;
 volatile int32_t toggles = 0;
@@ -39,7 +40,7 @@ void noTone(const pin_t _pin) {
   tone_pin = P_NC;
 }
 
-extern "C" void TIMER2_IRQHandler(void) {
+extern "C" [[gnu::optimize("O3")]] void TIMER2_IRQHandler(void) {
   const uint32_t interrupts = LPC_TIM2->IR;
   LPC_TIM2->IR = interrupts;  // clear all interrupts
   if (toggles != 0) {

@@ -32,7 +32,7 @@
 #include <binary.h>
 #include <const_functions.h>
 #include <pinmapping.h>
-#include <gpio.h>
+#include <adc.h>
 
 using boolean = bool;
 
@@ -109,10 +109,36 @@ uint32_t micros();
 
 //IO functions
 void pinMode(const pin_t, const uint8_t);
-void digitalWrite(pin_t, uint8_t);
-bool digitalRead(pin_t);
 void analogWrite(pin_t, int);
-uint16_t analogRead(pin_t);
+void analogReference(uint8_t);
+void analogReadResolution(uint8_t resolution);
+uint8_t analogReadResolution();
+
+
+[[gnu::always_inline, gnu::optimize("O3")]] inline void digitalWrite(const pin_t pin, const uint8_t pin_status) {
+  if (!pin_is_valid(pin)) return;
+
+  gpio_set(pin, pin_status);
+  // Set pin mode on every write (Arduino version does this)
+  gpio_set_output(pin);
+}
+[[gnu::always_inline, gnu::optimize("O3")]] inline bool digitalRead(const pin_t pin) {
+  if (!pin_is_valid(pin)) return false;
+  return gpio_get(pin);
+}
+[[gnu::always_inline, gnu::optimize("O3")]] inline uint16_t analogRead(pin_t pin) {
+  if (!pin_is_valid(pin) || !pin_has_adc(pin)) return 0;
+
+  if (!pin_adc_enabled(pin)) {
+    pin_enable_adc(pin);
+    LPC176x::adc_hardware.select(pin_get_adc_channel(pin));
+    while(!LPC176x::adc_hardware.done(pin_get_adc_channel(pin)));
+  }
+
+  int8_t bs = 16 - analogReadResolution();
+  uint32_t reading = LPC176x::ADC<2,5>::read(pin);
+  return bs > 0 ? reading >> bs : reading << abs(bs);
+}
 
 // EEPROM
 void eeprom_write_byte(uint8_t *pos, unsigned char value);
