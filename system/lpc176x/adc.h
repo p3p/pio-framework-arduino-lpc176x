@@ -314,16 +314,15 @@ struct ADC {
     uint8_t adc_channel = pin_get_adc_channel(pin);
     uint16_t data = adc_hardware.result(adc_channel) << 4; // 12 - 16bit conversion before filters
 
-    if constexpr (ADC_MEDIAN_FILTER_SIZE > 0 || ADC_LOWPASS_K_VALUE > 0) {
-      if constexpr (ADC_MEDIAN_FILTER_SIZE > 0) {
-        static MedianFilter median_filter[NUM_ANALOG_INPUTS];
-        data = median_filter[adc_channel].update(data);
-      }
-      if constexpr (ADC_LOWPASS_K_VALUE > 0) {
-        static LowpassFilter lowpass_filter[NUM_ANALOG_INPUTS];
-        data = lowpass_filter[adc_channel].update(data);
-      }
+    if constexpr (ADC_MEDIAN_FILTER_SIZE > 0) {
+      static MedianFilter median_filter[NUM_ANALOG_INPUTS];
+      data = median_filter[adc_channel].update(data);
     }
+    if constexpr (ADC_LOWPASS_K_VALUE > 0) {
+      static LowpassFilter lowpass_filter[NUM_ANALOG_INPUTS];
+      data = lowpass_filter[adc_channel].update(data);
+    }
+
     return data;
   }
 };
