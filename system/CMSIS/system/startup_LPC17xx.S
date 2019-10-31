@@ -145,6 +145,17 @@ Reset_Handler:
     strlt   r0, [r2], #4
     blt    .flash_to_ram_loop
 
+    ldr    r1, =__ramcode_flash_start
+    ldr    r2, =__ramcode_ram_start
+    ldr    r3, =__ramcode_ram_end
+
+.ramcode_to_ram_loop:
+    cmp     r2, r3
+    ittt    lt
+    ldrlt   r0, [r1], #4
+    strlt   r0, [r2], #4
+    blt    .ramcode_to_ram_loop
+
     ldr    r0, =SystemInit
     blx    r0
     ldr    r0, =SystemPostInit
