@@ -5,7 +5,8 @@ MEMORY
    * Reserve the last 32KB sector for EEPROM emulation
    */
   FLASH (rx) : ORIGIN = 16K, LENGTH = (512K - 48K)
-  RAM (rwx) : ORIGIN = 0x10000100, LENGTH = (32K - 0x100 - 0x20)
+  /* 0x20 at the end of RAM is used for IAP*/
+  RAM (rwx) : ORIGIN = 0x10000000, LENGTH = (32K - 0x20)
 
   USB_RAM(rwx) : ORIGIN = 0x2007C000, LENGTH = 16K
   ETH_RAM(rwx) : ORIGIN = 0x20080000, LENGTH = 16K
@@ -41,6 +42,13 @@ ENTRY(Reset_Handler)
 
 SECTIONS
 {
+    /* interrupt vectors coppied from FLASH to RAM at startup */
+    .ram_isr_vector :
+    {
+        _ram_start = .;
+        . = 0x100;
+    } > RAM
+
     .text :
     {
         KEEP(*(.isr_vector))
@@ -72,6 +80,7 @@ SECTIONS
     {
         __ramcode_flash_start = LOADADDR (.ramcode);
         __ramcode_ram_start = .;
+        *(.glue_7t) *(glue_7)
         *(.ramcode*)
         . = ALIGN(4);
         __ramcode_ram_end = .;

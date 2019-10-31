@@ -319,7 +319,7 @@ using LPC176x::PinMode;
   LPC176x::pin_type{pin}.mode(mode);
 }
 
-[[gnu::always_inline]] inline bool pin_get_mode(const pin_t pin) {
+[[gnu::always_inline, nodiscard]] inline PinMode pin_get_mode(const pin_t pin) {
   return LPC176x::pin_type{pin}.mode();
 }
 
