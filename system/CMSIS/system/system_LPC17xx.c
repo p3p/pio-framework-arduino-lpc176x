@@ -22,8 +22,9 @@
  *
  ******************************************************************************/
 
-
+#include <string.h>
 #include <stdint.h>
+#include <lpc17xx_nvic.h>
 #include "LPC17xx.h"
 
 
@@ -618,6 +619,9 @@ void SystemInit (void)
   LPC_SC->FLASHCFG  = (LPC_SC->FLASHCFG & ~0x0000F000) | FLASHCFG_Val;
 #endif
 
+  // Setup the vector table at start of RAM
+  memcpy((void*)0x10000000, (void*)SCB->VTOR, 0x100);
+  SCB->VTOR = 0x10000000;
 }
 
  __attribute__ ((weak)) void SystemPostInit() {}

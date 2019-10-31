@@ -5,7 +5,7 @@ MEMORY
    * Reserve the last 32KB sector for EEPROM emulation
    */
   FLASH (rx) : ORIGIN = 16K, LENGTH = (512K - 48K)
-  RAM (rwx) : ORIGIN = 0x100000C8, LENGTH = (32K - 0xC8)
+  RAM (rwx) : ORIGIN = 0x10000100, LENGTH = (32K - 0x100 - 0x20)
 
   USB_RAM(rwx) : ORIGIN = 0x2007C000, LENGTH = 16K
   ETH_RAM(rwx) : ORIGIN = 0x20080000, LENGTH = 16K
@@ -67,6 +67,15 @@ SECTIONS
 
         KEEP(*(.eh_frame*))
     } > FLASH
+
+    .ramcode :
+    {
+        __ramcode_flash_start = LOADADDR (.ramcode);
+        __ramcode_ram_start = .;
+        *(.ramcode*)
+        . = ALIGN(4);
+        __ramcode_ram_end = .;
+    } > RAM AT > FLASH
 
     .ARM.extab :
     {
