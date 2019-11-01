@@ -26,7 +26,7 @@
 
 class HardwarePWM {
   // return the bits to attach the PWM hardware depending on port using a lookup table
-  [[nodiscard]] static constexpr int8_t pwm_feature_index(const pin_t pin) noexcept {
+  [[nodiscard]] static constexpr int8_t pwm_function_index(const pin_t pin) noexcept {
     constexpr std::array<int8_t, 5> lookup {-1, 2, 1, 3, -1};
     return lookup[pin_port(pin)];
   }
@@ -65,7 +65,7 @@ class HardwarePWM {
   static inline void set_idle(const pin_t pin) {
     gpio_set_output(pin); // used when at 0 duty cycle
     util::bit_set(idle_pins, get_pin_id(pin));      // mark pin as inactive
-    pin_enable_feature(pin, 0);
+    pin_enable_function(pin, LPC176x::Function::GPIO);
     gpio_clear(pin);
   }
 
@@ -148,7 +148,7 @@ public:
     if(value == 0) {
       set_idle(pin);
     } else if(util::bit_test(idle_pins, get_pin_id(pin))) {
-      pin_enable_feature(pin, pwm_feature_index(pin));
+      pin_enable_function(pin, pwm_function_index(pin));
       util::bit_clear(idle_pins, get_pin_id(pin));
     }
   }
@@ -162,7 +162,7 @@ public:
 
   static inline bool detach(const pin_t pin) {
     if (active(pin)) {
-      pin_enable_feature(pin, 0); // reenable gpio
+      pin_enable_function(pin, LPC176x::Function::GPIO); // reenable gpio
       gpio_clear(pin);
       deactivate_channel(pin);
       return true;

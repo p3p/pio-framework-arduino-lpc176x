@@ -216,7 +216,7 @@ public:
     if (data_table.update(pin, value)) {
       gpio_set_output(pin);
       gpio_clear(pin);
-      pin_enable_feature(pin, 0);            // initialise pin for gpio output
+      pin_enable_function(pin, LPC176x::Function::GPIO);            // initialise pin for gpio output
       return true;
     }
     return false;

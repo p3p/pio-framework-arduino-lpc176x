@@ -120,6 +120,7 @@ uint8_t analogReadResolution();
 
   gpio_set(pin, pin_status);
   // Set pin mode on every write (Arduino version does this)
+  pin_enable_function(pin, LPC176x::Function::GPIO);
   gpio_set_output(pin);
 }
 [[gnu::always_inline, gnu::optimize("O3")]] inline bool digitalRead(const pin_t pin) {

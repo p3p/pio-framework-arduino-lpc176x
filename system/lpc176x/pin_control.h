@@ -14,6 +14,13 @@ namespace LPC176x {
     OPENDRAIN,
   };
 
+  enum Function : uint8_t {
+    GPIO,
+    FUNC1,
+    FUNC2,
+    FUNC3,
+  };
+
   struct pin_type {
     struct gpio_block {
       uint32_t reg_dir;               // 0x00
@@ -347,6 +354,6 @@ using LPC176x::PinMode;
   LPC176x::pin_type{pin}.enable_pwm();
 }
 
-[[gnu::always_inline]] inline void pin_enable_feature(const pin_t pin, uint8_t feature) {
-  LPC176x::pin_type{pin}.function(feature);
+[[gnu::always_inline]] inline void pin_enable_function(const pin_t pin, uint8_t function) {
+  LPC176x::pin_type{pin}.function(function);
 }
