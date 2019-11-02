@@ -8,6 +8,8 @@
 
 namespace LPC176x {
 
+constexpr uint16_t analog_input_count = 8;
+
 struct  adc_control {
   struct adc_register_block {
     volatile uint32_t control;          // 00
@@ -315,16 +317,15 @@ struct ADC {
     uint16_t data = adc_hardware.result(adc_channel) << 4; // 12 - 16bit conversion before filters
 
     if constexpr (ADC_MEDIAN_FILTER_SIZE > 0) {
-      static MedianFilter median_filter[NUM_ANALOG_INPUTS];
+      static MedianFilter median_filter[analog_input_count];
       data = median_filter[adc_channel].update(data);
     }
     if constexpr (ADC_LOWPASS_K_VALUE > 0) {
-      static LowpassFilter lowpass_filter[NUM_ANALOG_INPUTS];
+      static LowpassFilter lowpass_filter[analog_input_count];
       data = lowpass_filter[adc_channel].update(data);
     }
 
     return data;
   }
 };
-
-}
+} // LPC176x

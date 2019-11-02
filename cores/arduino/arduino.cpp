@@ -55,35 +55,35 @@ uint32_t micros() {
 
 // This is required for some Arduino libraries we are using
 void delayMicroseconds(uint32_t us) {
-  time::delay_us(us);
+  LPC176x::delay_us(us);
 }
 
 void delay(const int msec) {
-  time::delay_ms(msec);
+  LPC176x::delay_ms(msec);
 }
 
 // IO functions
 // As defined by Arduino INPUT(0x0), OUTPUT(0x1), INPUT_PULLUP(0x2)
 void pinMode(const pin_t pin, const uint8_t mode) {
-  if (!pin_is_valid(pin)) return;
-  pin_enable_function(pin, LPC176x::Function::GPIO);
+  if (!LPC176x::pin_is_valid(pin)) return;
+  LPC176x::pin_enable_function(pin, LPC176x::Function::GPIO);
   if(mode == OUTPUT) {
-    gpio_set_output(pin);
-    pin_set_mode(pin, PinMode::TRISTATE);
+    LPC176x::gpio_set_output(pin);
+    LPC176x::pin_set_mode(pin, LPC176x::PinMode::TRISTATE);
   } else {
-    gpio_set_input(pin);
-    if(mode == INPUT_PULLUP) pin_set_mode(pin, PinMode::PULLUP);
-    else if(mode == INPUT_PULLDOWN) pin_set_mode(pin, PinMode::PULLDOWN);
-    else pin_set_mode(pin, PinMode::TRISTATE);
+    LPC176x::gpio_set_input(pin);
+    if(mode == INPUT_PULLUP) LPC176x::pin_set_mode(pin, LPC176x::PinMode::PULLUP);
+    else if(mode == INPUT_PULLDOWN) LPC176x::pin_set_mode(pin, LPC176x::PinMode::PULLDOWN);
+    else LPC176x::pin_set_mode(pin, LPC176x::PinMode::TRISTATE);
   }
 }
 
 void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255: HIGH
-  if (!pin_is_valid(pin)) return;
+  if (!LPC176x::pin_is_valid(pin)) return;
 
-  util::limit(pwm_value, 0, 255);
-  if (pwm_attach_pin(pin)) {
-    pwm_write_ratio(pin, (uint8_t)pwm_value);  // map 1-254 onto PWM range
+  LPC176x::util::limit(pwm_value, 0, 255);
+  if (LPC176x::pwm_attach_pin(pin)) {
+    LPC176x::pwm_write_ratio(pin, (uint8_t)pwm_value);  // map 1-254 onto PWM range
   } else {
     digitalWrite(pin, pwm_value);  // treat as a digital pin if out of channels
   }

@@ -30,6 +30,8 @@
 #include <LPC17xx.h>
 
 #include <binary.h>
+
+#include <time.h>
 #include <const_functions.h>
 #include <pinmapping.h>
 #include <adc.h>
@@ -56,9 +58,9 @@ typedef uint8_t byte;
 #define PSTR(v) (v)
 #define PGM_P const char *
 
-using util::min;
-using util::max;
-using util::abs;
+using LPC176x::util::min;
+using LPC176x::util::max;
+using LPC176x::util::abs;
 using std::isnan;
 using std::isinf;
 
@@ -114,26 +116,36 @@ void analogReference(uint8_t);
 void analogReadResolution(uint8_t resolution);
 uint8_t analogReadResolution();
 
+constexpr uint16_t NUM_DIGITAL_PINS = 160;
+constexpr uint16_t NUM_ANALOG_INPUTS = LPC176x::analog_input_count;
+
+// Get the digital pin for an analog index
+constexpr pin_t analogInputToDigitalPin(const int8_t channel) {
+  return LPC176x::pin_type::index_from_adc_channnel(channel);
+}
+
+constexpr pin_t digitalPinToInterrupt(const pin_t pin) { return pin; }
+
 
 [[gnu::always_inline, gnu::optimize("O3")]] inline void digitalWrite(const pin_t pin, const uint8_t pin_status) {
-  if (!pin_is_valid(pin)) return;
+  if (!LPC176x::pin_is_valid(pin)) return;
 
-  gpio_set(pin, pin_status);
+  LPC176x::gpio_set(pin, pin_status);
   // Set pin mode on every write (Arduino version does this)
-  pin_enable_function(pin, LPC176x::Function::GPIO);
-  gpio_set_output(pin);
+  LPC176x::pin_enable_function(pin, LPC176x::Function::GPIO);
+  LPC176x::gpio_set_output(pin);
 }
 [[gnu::always_inline, gnu::optimize("O3")]] inline bool digitalRead(const pin_t pin) {
-  if (!pin_is_valid(pin)) return false;
-  return gpio_get(pin);
+  if (!LPC176x::pin_is_valid(pin)) return false;
+  return LPC176x::gpio_get(pin);
 }
 [[gnu::always_inline, gnu::optimize("O3")]] inline uint16_t analogRead(pin_t pin) {
-  if (!pin_is_valid(pin) || !pin_has_adc(pin)) return 0;
+  if (!LPC176x::pin_is_valid(pin) || !LPC176x::pin_has_adc(pin)) return 0;
 
-  if (!pin_adc_enabled(pin)) {
-    pin_enable_adc(pin);
-    LPC176x::adc_hardware.select(pin_get_adc_channel(pin));
-    while(!LPC176x::adc_hardware.done(pin_get_adc_channel(pin)));
+  if (!LPC176x::pin_adc_enabled(pin)) {
+    LPC176x::pin_enable_adc(pin);
+    LPC176x::adc_hardware.select(LPC176x::pin_get_adc_channel(pin));
+    while(!LPC176x::adc_hardware.done(LPC176x::pin_get_adc_channel(pin)));
   }
 
   int8_t bs = 16 - analogReadResolution();
@@ -153,7 +165,7 @@ void randomSeed(uint32_t);
 
 char *dtostrf (double __val, signed char __width, unsigned char __prec, char *__s);
 
-using util::map;
+using LPC176x::util::map;
 
 void tone(const pin_t _pin, const uint32_t frequency, const uint32_t duration = 0);
 void noTone(const pin_t _pin);

@@ -3,9 +3,7 @@
 #include <cstdint>
 #include <pin_control.h>
 
-/**
- *   GPIO LPC176x::pin_type wrapper
- */
+namespace LPC176x {
 
 [[gnu::always_inline]] inline void gpio_set_input(const pin_t pin) {
   LPC176x::pin_type{pin}.input();
@@ -58,3 +56,5 @@
 [[gnu::always_inline, nodiscard]] constexpr bool gpio_interrupt_capable(const pin_t pin) {
   return LPC176x::pin_type{pin}.is_interrupt_capable();
 }
+
+} // LPC176x

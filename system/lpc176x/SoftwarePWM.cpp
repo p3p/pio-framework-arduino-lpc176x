@@ -1,5 +1,7 @@
 #include <SoftwarePWM.h>
 
+namespace LPC176x {
+
 SoftwarePwmTable<PWM_MAX_SOFTWARE_CHANNELS> SoftwarePWM::data_table {};
 
 struct PwmFrameItem { pin_t pin = P_NC; uint32_t match = 0; };
@@ -83,3 +85,5 @@ extern "C"
   }
   return;
 }
+
+} // LPC176x

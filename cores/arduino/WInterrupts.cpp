@@ -40,15 +40,15 @@ static void __initialize() {
 void attachInterrupt(const pin_t pin, void (*callback)(void), uint32_t mode) {
   static int enabled = 0;
 
-  if (!gpio_interrupt_capable(pin)) return;
+  if (!LPC176x::gpio_interrupt_capable(pin)) return;
 
   if (!enabled) {
     __initialize();
     ++enabled;
   }
 
-  uint8_t myport = pin_port(pin),
-          mypin = pin_bit(pin);
+  uint8_t myport = LPC176x::pin_port(pin),
+          mypin = LPC176x::pin_bit(pin);
 
   if (myport == 0)
     callbacksP0[mypin] = callback;
@@ -60,10 +60,10 @@ void attachInterrupt(const pin_t pin, void (*callback)(void), uint32_t mode) {
 }
 
 void detachInterrupt(const pin_t pin) {
-  if (!gpio_interrupt_capable(pin)) return;
+  if (!LPC176x::gpio_interrupt_capable(pin)) return;
 
-  const uint8_t myport = pin_port(pin),
-                mypin = pin_bit(pin);
+  const uint8_t myport = LPC176x::pin_port(pin),
+                mypin = LPC176x::pin_bit(pin);
 
   // Disable interrupt
   GpioDisableInt(myport, mypin);
@@ -79,47 +79,47 @@ void detachInterrupt(const pin_t pin) {
 extern "C" void GpioEnableInt(uint32_t port, uint32_t pin, uint32_t mode) {
   //pin here is the processor pin, not logical pin
   if (port == 0) {
-    LPC_GPIOINT->IO0IntClr = util::bit_value(pin);
+    LPC_GPIOINT->IO0IntClr = LPC176x::util::bit_value(pin);
     if (mode == RISING) {
-      util::bit_set(LPC_GPIOINT->IO0IntEnR, pin);
-      util::bit_clear(LPC_GPIOINT->IO0IntEnF, pin);
+      LPC176x::util::bit_set(LPC_GPIOINT->IO0IntEnR, pin);
+      LPC176x::util::bit_clear(LPC_GPIOINT->IO0IntEnF, pin);
     }
     else if (mode == FALLING) {
-      util::bit_set(LPC_GPIOINT->IO0IntEnF, pin);
-      util::bit_clear(LPC_GPIOINT->IO0IntEnR, pin);
+      LPC176x::util::bit_set(LPC_GPIOINT->IO0IntEnF, pin);
+      LPC176x::util::bit_clear(LPC_GPIOINT->IO0IntEnR, pin);
     }
     else if (mode == CHANGE) {
-      util::bit_set(LPC_GPIOINT->IO0IntEnR, pin);
-      util::bit_set(LPC_GPIOINT->IO0IntEnF, pin);
+      LPC176x::util::bit_set(LPC_GPIOINT->IO0IntEnR, pin);
+      LPC176x::util::bit_set(LPC_GPIOINT->IO0IntEnF, pin);
     }
   }
   else {
-    LPC_GPIOINT->IO2IntClr = util::bit_value(pin);
+    LPC_GPIOINT->IO2IntClr = LPC176x::util::bit_value(pin);
     if (mode == RISING) {
-      util::bit_set(LPC_GPIOINT->IO2IntEnR, pin);
-      util::bit_clear(LPC_GPIOINT->IO2IntEnF, pin);
+      LPC176x::util::bit_set(LPC_GPIOINT->IO2IntEnR, pin);
+      LPC176x::util::bit_clear(LPC_GPIOINT->IO2IntEnF, pin);
     }
     else if (mode == FALLING) {
-      util::bit_set(LPC_GPIOINT->IO2IntEnF, pin);
-      util::bit_clear(LPC_GPIOINT->IO2IntEnR, pin);
+      LPC176x::util::bit_set(LPC_GPIOINT->IO2IntEnF, pin);
+      LPC176x::util::bit_clear(LPC_GPIOINT->IO2IntEnR, pin);
     }
     else if (mode == CHANGE) {
-      util::bit_set(LPC_GPIOINT->IO2IntEnR, pin);
-      util::bit_set(LPC_GPIOINT->IO2IntEnF, pin);
+      LPC176x::util::bit_set(LPC_GPIOINT->IO2IntEnR, pin);
+      LPC176x::util::bit_set(LPC_GPIOINT->IO2IntEnF, pin);
     }
   }
 }
 
 extern "C" void GpioDisableInt(const uint32_t port, const uint32_t pin) {
   if (port == 0) {
-    util::bit_clear(LPC_GPIOINT->IO0IntEnR, pin);
-    util::bit_clear(LPC_GPIOINT->IO0IntEnF, pin);
-    LPC_GPIOINT->IO0IntClr = util::bit_value(pin);
+    LPC176x::util::bit_clear(LPC_GPIOINT->IO0IntEnR, pin);
+    LPC176x::util::bit_clear(LPC_GPIOINT->IO0IntEnF, pin);
+    LPC_GPIOINT->IO0IntClr = LPC176x::util::bit_value(pin);
   }
   else {
-    util::bit_clear(LPC_GPIOINT->IO2IntEnR, pin);
-    util::bit_clear(LPC_GPIOINT->IO2IntEnF, pin);
-    LPC_GPIOINT->IO2IntClr = util::bit_value(pin);
+    LPC176x::util::bit_clear(LPC_GPIOINT->IO2IntEnR, pin);
+    LPC176x::util::bit_clear(LPC_GPIOINT->IO2IntEnF, pin);
+    LPC_GPIOINT->IO2IntClr = LPC176x::util::bit_value(pin);
   }
 }
 
@@ -138,24 +138,24 @@ extern "C" void EINT3_IRQHandler(void) {
   while (rise0 > 0) {                                       // If multiple pins changes happened continue as long as there are interrupts pending
     const uint8_t bitloc = 31 - __CLZ(rise0);               // CLZ returns number of leading zeros, 31 minus that is location of first pending interrupt
     if (callbacksP0[bitloc] != NULL) callbacksP0[bitloc]();
-    rise0 -= util::bit_value(bitloc);
+    rise0 -= LPC176x::util::bit_value(bitloc);
   }
 
   while (fall0 > 0) {
     const uint8_t bitloc = 31 - __CLZ(fall0);
     if (callbacksP0[bitloc] != NULL) callbacksP0[bitloc]();
-    fall0 -= util::bit_value(bitloc);
+    fall0 -= LPC176x::util::bit_value(bitloc);
   }
 
   while(rise2 > 0) {
     const uint8_t bitloc = 31 - __CLZ(rise2);
     if (callbacksP2[bitloc] != NULL) callbacksP2[bitloc]();
-    rise2 -= util::bit_value(bitloc);
+    rise2 -= LPC176x::util::bit_value(bitloc);
   }
 
   while (fall2 > 0) {
     const uint8_t bitloc = 31 - __CLZ(fall2);
     if (callbacksP2[bitloc] != NULL) callbacksP2[bitloc]();
-    fall2 -= util::bit_value(bitloc);
+    fall2 -= LPC176x::util::bit_value(bitloc);
   }
 }

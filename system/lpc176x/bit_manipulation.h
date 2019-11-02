@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+namespace LPC176x {
 namespace util {
 
 template <typename Bit>
@@ -60,4 +61,5 @@ constexpr void bitset_clear(Value& val, const BitSet bitset) noexcept {
   val &= ~bitset;
 }
 
-}
+} // util
+} // LPC176x

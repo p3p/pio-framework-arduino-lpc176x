@@ -47,7 +47,7 @@ int main(void) {
   LPC176x::adc_hardware.burst_start();
 
   // Initialise PWM timers
-  pwm_init();
+  LPC176x::pwm_init();
 
   setup();
   for (;;) loop();

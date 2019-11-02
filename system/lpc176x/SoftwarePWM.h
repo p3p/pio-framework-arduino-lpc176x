@@ -15,13 +15,15 @@
  *
  */
 
-#ifndef _SOFTWARE_PWM_H_
-#define _SOFTWARE_PWM_H_
+#pragma once
 
 #include <lpc17xx_clkpwr.h>
+#include <const_functions.h>
 #include <pinmapping.h>
 #include <registers.h>
 #include <bit_manipulation.h>
+
+namespace LPC176x {
 
 constexpr uint32_t PWM_MAX_SOFTWARE_CHANNELS = 20;
 constexpr uint32_t PWM_MATCH_OFFSET = 25; // in timer cycles (25MHz) 1us
@@ -230,4 +232,4 @@ private:
   static SoftwarePwmTable<PWM_MAX_SOFTWARE_CHANNELS> data_table;
 };
 
-#endif // _SOFTWARE_PWM_H_
+} // LPC176x

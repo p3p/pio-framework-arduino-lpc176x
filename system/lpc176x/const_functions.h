@@ -4,6 +4,7 @@
 #include <cmath>
 #include <type_traits>
 
+namespace LPC176x {
 namespace util {
 
 template <class L, class R>
@@ -67,3 +68,4 @@ constexpr void limit(V& v, const N1 n1, const N2 n2) noexcept {
 }
 
 } // util
+} // LPC176x

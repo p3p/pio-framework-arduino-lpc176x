@@ -49,25 +49,25 @@
 uint8_t swSpiTransfer(uint8_t b, const uint8_t spi_speed, const pin_t sck_pin, const pin_t miso_pin, const pin_t mosi_pin) {
   for (uint8_t i = 0; i < 8; i++) {
     if (spi_speed == 0) {
-      gpio_set(mosi_pin, !!(b & 0x80));
-      gpio_set(sck_pin, HIGH);
+      LPC176x::gpio_set(mosi_pin, !!(b & 0x80));
+      LPC176x::gpio_set(sck_pin, HIGH);
       b <<= 1;
-      if (miso_pin >= 0 && gpio_get(miso_pin)) b |= 1;
-      gpio_set(sck_pin, LOW);
+      if (miso_pin >= 0 && LPC176x::gpio_get(miso_pin)) b |= 1;
+      LPC176x::gpio_set(sck_pin, LOW);
     }
     else {
       const uint8_t state = (b & 0x80) ? HIGH : LOW;
       for (uint8_t j = 0; j < spi_speed; j++)
-        gpio_set(mosi_pin, state);
+        LPC176x::gpio_set(mosi_pin, state);
 
       for (uint8_t j = 0; j < spi_speed + (miso_pin >= 0 ? 0 : 1); j++)
-        gpio_set(sck_pin, HIGH);
+        LPC176x::gpio_set(sck_pin, HIGH);
 
       b <<= 1;
-      if (miso_pin >= 0 && gpio_get(miso_pin)) b |= 1;
+      if (miso_pin >= 0 && LPC176x::gpio_get(miso_pin)) b |= 1;
 
       for (uint8_t j = 0; j < spi_speed; j++)
-        gpio_set(sck_pin, LOW);
+        LPC176x::gpio_set(sck_pin, LOW);
     }
   }
   return b;
@@ -75,12 +75,12 @@ uint8_t swSpiTransfer(uint8_t b, const uint8_t spi_speed, const pin_t sck_pin, c
 
 void swSpiBegin(const pin_t sck_pin, const pin_t miso_pin, const pin_t mosi_pin) {
   pinMode(sck_pin, OUTPUT);
-  if (pin_is_valid(miso_pin)) pinMode(miso_pin, INPUT);
+  if (LPC176x::pin_is_valid(miso_pin)) pinMode(miso_pin, INPUT);
   pinMode(mosi_pin, OUTPUT);
 }
 
 uint8_t swSpiInit(const uint8_t spiRate, const pin_t sck_pin, const pin_t mosi_pin) {
-  gpio_set(mosi_pin, HIGH);
-  gpio_set(sck_pin, LOW);
+  LPC176x::gpio_set(mosi_pin, HIGH);
+  LPC176x::gpio_set(sck_pin, LOW);
   return (SystemCoreClock == 120000000 ? 44 : 38) / std::pow(2, 6 - std::min(spiRate, (uint8_t)6));
 }

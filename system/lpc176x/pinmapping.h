@@ -17,15 +17,10 @@
 
 #pragma once
 
-#include <cstdint>
-#include <iterator>
-#include <array>
-
-#include <const_functions.h>
-
 #include <pin_control.h>
 #include <gpio.h>
 
+using LPC176x::pin_t;
 
 #define P_NC -1
 #define P0_00 0x00
@@ -106,13 +101,3 @@
 #define P3_26 0x7A
 #define P4_28 0x9C
 #define P4_29 0x9D
-
-constexpr uint8_t NUM_DIGITAL_PINS = 160;
-constexpr uint8_t NUM_ANALOG_INPUTS = 8;
-
-// Get the digital pin for an analog index
-constexpr pin_t analogInputToDigitalPin(const int8_t channel) {
-  return LPC176x::pin_type::index_from_adc_channnel(channel);
-}
-
-constexpr pin_t digitalPinToInterrupt(const pin_t pin) { return pin; }

@@ -122,7 +122,7 @@ inline void SoftwareSerial::setTX() {
   // output hihg. Now, it is input with pullup for a short while, which
   // is fine. With inverse logic, either order is fine.
 
-  gpio_set(_transmitPin, _inverse_logic ? LOW : HIGH);
+  LPC176x::gpio_set(_transmitPin, _inverse_logic ? LOW : HIGH);
   pinMode(_transmitPin, OUTPUT);
 }
 
@@ -157,7 +157,7 @@ inline void SoftwareSerial::setRXTX(bool input) {
   if (--tx_tick_cnt <= 0) {
     if (tx_bit_cnt++ < 10 ) {
       // send data (including start and stop bits)
-      gpio_set(_transmitPin, tx_buffer & 1);
+      LPC176x::gpio_set(_transmitPin, tx_buffer & 1);
       tx_buffer >>= 1;
       tx_tick_cnt = OVERSAMPLE;
     }
@@ -185,7 +185,7 @@ inline void SoftwareSerial::setRXTX(bool input) {
 //
 [[gnu::always_inline, gnu::optimize("O3")]] inline void SoftwareSerial::recv() {
   if (--rx_tick_cnt <= 0) {
-    uint8_t inbit = gpio_get(_receivePin);
+    uint8_t inbit = LPC176x::gpio_get(_receivePin);
     if (rx_bit_cnt == -1) {
       // waiting for start bit
       if (!inbit) {
