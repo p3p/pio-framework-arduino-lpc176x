@@ -16,6 +16,9 @@
  */
 
 #include "HardwarePWM.h"
+namespace LPC176x {
 
 uint32_t HardwarePWM::active_pins =  0;
 uint32_t HardwarePWM::idle_pins = 0;
+
+}

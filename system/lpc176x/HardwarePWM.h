@@ -15,8 +15,7 @@
  *
  */
 
-#ifndef _HARDWARE_PWM_H_
-#define _HARDWARE_PWM_H_
+#pragma once
 
 #include <lpc17xx_clkpwr.h>
 #include <lpc17xx_pwm.h>
@@ -24,6 +23,7 @@
 #include <bit_manipulation.h>
 #include <registers.h>
 
+namespace LPC176x {
 class HardwarePWM {
   // return the bits to attach the PWM hardware depending on port using a lookup table
   [[nodiscard]] static constexpr int8_t pwm_function_index(const pin_t pin) noexcept {
@@ -175,5 +175,5 @@ private:
   static uint32_t active_pins;
   static uint32_t idle_pins;
 };
+}
 
-#endif // _HARDWARE_PWM_H_

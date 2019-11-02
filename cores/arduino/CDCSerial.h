@@ -146,7 +146,7 @@ public:
   size_t readBytes(char* dst, size_t length) {
     size_t buffered = receive_buffer.read((uint8_t*)dst, length);
     const uint32_t usb_rx_timeout = millis() + USBCDCTIMEOUT;
-    while (buffered != length && util::pending(millis(), usb_rx_timeout)) {
+    while (buffered != length && LPC176x::util::pending(millis(), usb_rx_timeout)) {
       if (!host_connected) return 0;
       CDC_FillBuffer(receive_buffer.free());
       buffered += receive_buffer.read((uint8_t*)dst + buffered, length - buffered);
@@ -158,7 +158,7 @@ public:
   size_t write(char* src, size_t length) {
     size_t buffered = transmit_buffer.write((uint8_t*)src, length);
     const uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
-    while (buffered != length && util::pending(millis(), usb_tx_timeout)) {
+    while (buffered != length && LPC176x::util::pending(millis(), usb_tx_timeout)) {
       if (!host_connected) return 0;
       buffered += transmit_buffer.write((uint8_t*)src + buffered, length - buffered);
       CDC_FlushBuffer();
@@ -170,7 +170,7 @@ public:
   size_t write(const uint8_t c) {
     if (!host_connected) return 0;          // Do not fill buffer when host disconnected
     const uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
-    while (transmit_buffer.write(c) == 0 && util::pending(millis(), usb_tx_timeout)) { // Block until there is free room in buffer
+    while (transmit_buffer.write(c) == 0 && LPC176x::util::pending(millis(), usb_tx_timeout)) { // Block until there is free room in buffer
       if (!host_connected) return 0;        // Break infinite loop on host disconect
       CDC_FlushBuffer();
     }
@@ -194,7 +194,7 @@ public:
 
   void flushTX(void) {
     const uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
-    while (transmit_buffer.available() && host_connected && util::pending(millis(), usb_tx_timeout)) {
+    while (transmit_buffer.available() && host_connected && LPC176x::util::pending(millis(), usb_tx_timeout)) {
       CDC_FlushBuffer();
     }
   }
@@ -208,7 +208,7 @@ public:
     size_t i = 0;
     if (length > 0 && length < 256) {
       uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
-      while (i < (size_t)length && host_connected && util::pending(millis(), usb_tx_timeout)) {
+      while (i < (size_t)length && host_connected && LPC176x::util::pending(millis(), usb_tx_timeout)) {
         i += transmit_buffer.write(buffer[i]);
         CDC_FlushBuffer();
       }

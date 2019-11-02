@@ -16,12 +16,15 @@
 #include <array>
 #include <lpc17xx_pinsel.h>
 #include <lpc17xx_clkpwr.h>
+#include <time.h>
+#include <const_functions.h>
+#include <pinmapping.h>
 #include <HardwarePWM.h>
 #include <SoftwarePWM.h>
 #include <pwm.h>
-#include <Arduino.h>
-#include <time.h>
 
+namespace LPC176x {
+  
 void pwm_init(const uint32_t frequency) {
   // Period defaulted to 20ms (50Hz) for compatibility with servos
   HardwarePWM::init(frequency);
@@ -79,7 +82,7 @@ uint32_t pwm_get_period(const pin_t pin) {
 }
 
 bool pwm_write_ratio(const pin_t pin, const uint8_t value) {
-  return pwm_write(pin, map(value, 0, 255, 0, pwm_get_period(pin)));
+  return pwm_write(pin, util::map(value, 0, 255, 0, pwm_get_period(pin)));
 }
 
 bool pwm_write_ratio(const pin_t pin, const float value) {
@@ -117,3 +120,4 @@ bool pwm_set_frequency(const pin_t pin, const uint32_t frequency) {
 
   return false;
 }
+} // LPC176x

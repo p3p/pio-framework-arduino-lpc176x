@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+namespace LPC176x {
 namespace util {
 
 template<typename T>
@@ -14,4 +15,5 @@ template<typename T>
   return *reinterpret_cast<volatile T*>(loc);
 }
 
-}
+} // util
+} // LPC176x

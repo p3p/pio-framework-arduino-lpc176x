@@ -79,7 +79,7 @@ int8_t Servo::attach(const pin_t pin) {
 }
 
 int8_t Servo::attach(const pin_t pin, const int min, const int max) {
-  if (this->servoIndex >= MAX_SERVOS || !pwm_attach_pin(pin, DEFAULT_PULSE_WIDTH)) return -1;
+  if (this->servoIndex >= MAX_SERVOS || !LPC176x::pwm_attach_pin(pin, DEFAULT_PULSE_WIDTH)) return -1;
   servo_info[this->servoIndex].Pin.nbr = pin;
   servo_info[this->servoIndex].Pin.isActive = true;
   return this->servoIndex;
@@ -87,7 +87,7 @@ int8_t Servo::attach(const pin_t pin, const int min, const int max) {
 
 void Servo::detach() {
   servo_info[this->servoIndex].Pin.isActive = false;
-  pwm_detach_pin(servo_info[this->servoIndex].Pin.nbr);
+  LPC176x::pwm_detach_pin(servo_info[this->servoIndex].Pin.nbr);
 }
 
 void Servo::write(int value) {
@@ -106,8 +106,8 @@ void Servo::writeMicroseconds(int value) {
     // ensure pulse width is valid
     value = std::clamp(value, SERVO_MIN(), SERVO_MAX()) - (TRIM_DURATION);
     servo_info[channel].pulse_width = value;
-    pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr);
-    pwm_write_us(servo_info[this->servoIndex].Pin.nbr, value);
+    LPC176x::pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr);
+    LPC176x::pwm_write_us(servo_info[this->servoIndex].Pin.nbr, value);
   }
 }
 
