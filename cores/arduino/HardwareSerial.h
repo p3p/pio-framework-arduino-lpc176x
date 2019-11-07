@@ -237,6 +237,13 @@ public:
     }
   }
 
+  size_t write(char* src, size_t length) {
+    for (size_t i = 0; i < length; ++i) {
+      write(src[i]);
+    }
+    return length;
+  }
+
   void flushTX() {
     if constexpr (TXB_SIZE > 0) {
       // Wait for the tx buffer and FIFO to drain
