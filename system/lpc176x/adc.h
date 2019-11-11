@@ -298,9 +298,9 @@ struct ADC {
   };
 
   struct LowpassFilter {
-    uint32_t data_delay = 0x7FFF << ADC_LOWPASS_K_VALUE;
+    uint32_t data_delay = 0xFFFFFFFF;
     [[gnu::always_inline]] inline uint16_t update(uint16_t value) {
-      data_delay = data_delay - (data_delay >> ADC_LOWPASS_K_VALUE) + value;
+      data_delay = data_delay == 0xFFFFFFFF ? value << ADC_LOWPASS_K_VALUE : data_delay - (data_delay >> ADC_LOWPASS_K_VALUE) + value;
       return (uint16_t)(data_delay >> ADC_LOWPASS_K_VALUE);
     }
   };
