@@ -28,7 +28,7 @@ extern "C" {
 
 #include <Wire.h>
 
-#define USEDI2CDEV_M 1
+#define USEDI2CDEV_M 0
 
 #if (USEDI2CDEV_M == 0)
   #define I2CDEV_M LPC_I2C0
