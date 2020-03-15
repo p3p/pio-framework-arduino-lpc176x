@@ -157,6 +157,8 @@ using LPC176x::pin_t;
 #define P3_25 0x79
 #define P3_26 0x7A
 #define P3_27 0x7B
+#define P3_28 0x7C
+#define P3_29 0x7D
 #define P3_30 0x7E
 #define P3_31 0x7F
 
