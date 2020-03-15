@@ -37,9 +37,9 @@ using LPC176x::pin_t;
 #define P0_09 0x09
 #define P0_10 0x0A
 #define P0_11 0x0B
-#define P0_12 0x0B
-#define P0_13 0x0C
-#define P0_14 0x0D
+#define P0_12 0x0C
+#define P0_13 0x0D
+#define P0_14 0x0E
 #define P0_15 0x0F
 #define P0_16 0x10
 #define P0_17 0x11
