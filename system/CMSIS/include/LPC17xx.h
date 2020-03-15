@@ -558,6 +558,7 @@ typedef struct
   __IO uint32_t GPREG2;
   __IO uint32_t GPREG3;
   __IO uint32_t GPREG4;
+  __IO uint32_t GPREG5;
   __IO uint8_t  RTC_AUXEN;
        uint8_t  RESERVED12[3];
   __IO uint8_t  RTC_AUX;
@@ -1021,6 +1022,7 @@ typedef struct
 #define LPC_GPIO2_BASE        (LPC_GPIO_BASE + 0x00040)
 #define LPC_GPIO3_BASE        (LPC_GPIO_BASE + 0x00060)
 #define LPC_GPIO4_BASE        (LPC_GPIO_BASE + 0x00080)
+#define LPC_GPIO5_BASE        (LPC_GPIO_BASE + 0x000A0)
 
 /******************************************************************************/
 /*                         Peripheral declaration                             */
@@ -1031,6 +1033,7 @@ typedef struct
 #define LPC_GPIO2             ((LPC_GPIO_TypeDef      *) LPC_GPIO2_BASE    )
 #define LPC_GPIO3             ((LPC_GPIO_TypeDef      *) LPC_GPIO3_BASE    )
 #define LPC_GPIO4             ((LPC_GPIO_TypeDef      *) LPC_GPIO4_BASE    )
+#define LPC_GPIO5             ((LPC_GPIO_TypeDef      *) LPC_GPIO5_BASE    )
 #define LPC_WDT               ((LPC_WDT_TypeDef       *) LPC_WDT_BASE      )
 #define LPC_TIM0              ((LPC_TIM_TypeDef       *) LPC_TIM0_BASE     )
 #define LPC_TIM1              ((LPC_TIM_TypeDef       *) LPC_TIM1_BASE     )

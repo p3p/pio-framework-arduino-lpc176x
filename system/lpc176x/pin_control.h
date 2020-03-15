@@ -231,11 +231,12 @@ private:
   }
 
   [[gnu::always_inline]] constexpr bool valid_pin() const {
-    return (gpio_reg_id == 0 && !((gpio_reg_bit >= 12 && gpio_reg_bit <= 14) ||  gpio_reg_bit == 31)) ||
-            (gpio_reg_id == 1 && !(gpio_reg_bit == 02  || gpio_reg_bit == 03  || (gpio_reg_bit >= 5 && gpio_reg_bit <= 7) || (gpio_reg_bit >= 11 && gpio_reg_bit <= 13))) ||
-            (gpio_reg_id == 2 &&  (gpio_reg_bit < 14)) ||
-            (gpio_reg_id == 3 && (gpio_reg_bit == 25   || gpio_reg_bit == 26)) ||
-            (gpio_reg_id == 4 &&  (gpio_reg_bit == 28  || gpio_reg_bit == 29));
+    return (gpio_reg_id == 0 && ((gpio_reg_bit >= 10 )) ||
+            (gpio_reg_id == 1 && (gpio_reg_bit <= 31)) ||
+            (gpio_reg_id == 2 &&  (gpio_reg_bit <= 31)) ||
+            (gpio_reg_id == 3 && (gpio_reg_bit != 18 )) ||
+            (gpio_reg_id == 4 &&  (gpio_reg_bit <= 31)) ||
+            (gpio_reg_id == 5 &&  (gpio_reg_bit <= 5 ));
   }
   [[gnu::always_inline]] constexpr uint8_t adc_channel() const {
     switch (gpio_reg_bit) {

@@ -64,6 +64,8 @@ extern "C"
 #define GPIO3_Byte	((GPIO_Byte_TypeDef *)(LPC_GPIO3_BASE))
 /** Fast GPIO port 4 byte accessible definition */
 #define GPIO4_Byte	((GPIO_Byte_TypeDef *)(LPC_GPIO4_BASE))
+/** Fast GPIO port 5 byte accessible definition */
+#define GPIO5_Byte	((GPIO_Byte_TypeDef *)(LPC_GPIO5_BASE))
 
 
 /** Fast GPIO port 0 half-word accessible definition */
@@ -76,6 +78,8 @@ extern "C"
 #define GPIO3_HalfWord	((GPIO_HalfWord_TypeDef *)(LPC_GPIO3_BASE))
 /** Fast GPIO port 4 half-word accessible definition */
 #define GPIO4_HalfWord	((GPIO_HalfWord_TypeDef *)(LPC_GPIO4_BASE))
+/** Fast GPIO port 5 half-word accessible definition */
+#define GPIO5_HalfWord	((GPIO_HalfWord_TypeDef *)(LPC_GPIO5_BASE))
 
 /**
  * @}
@@ -90,12 +94,12 @@ extern "C"
  * @brief Fast GPIO port byte type definition
  */
 typedef struct {
-	__IO uint8_t FIODIR[4];		/**< FIO direction register in byte-align */
+	__IO uint8_t FIODIR[5];		/**< FIO direction register in byte-align */
 	   uint32_t RESERVED0[3];	/**< Reserved */
-	__IO uint8_t FIOMASK[4];	/**< FIO mask register in byte-align */
-	__IO uint8_t FIOPIN[4];		/**< FIO pin register in byte align */
-	__IO uint8_t FIOSET[4];		/**< FIO set register in byte-align */
-	__O  uint8_t FIOCLR[4];		/**< FIO clear register in byte-align */
+	__IO uint8_t FIOMASK[5];	/**< FIO mask register in byte-align */
+	__IO uint8_t FIOPIN[5];		/**< FIO pin register in byte align */
+	__IO uint8_t FIOSET[5];		/**< FIO set register in byte-align */
+	__O  uint8_t FIOCLR[5];		/**< FIO clear register in byte-align */
 } GPIO_Byte_TypeDef;
 
 

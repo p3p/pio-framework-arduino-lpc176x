@@ -82,6 +82,9 @@ static LPC_GPIO_TypeDef *GPIO_GetPointer(uint8_t portNum)
 	case 4:
 		pGPIO = LPC_GPIO4;
 		break;
+  case 5:
+		pGPIO = LPC_GPIO5;
+		break;
 	default:
 		break;
 	}
@@ -115,6 +118,9 @@ static GPIO_HalfWord_TypeDef *FIO_HalfWordGetPointer(uint8_t portNum)
 	case 4:
 		pFIO = GPIO4_HalfWord;
 		break;
+	case 5:
+		pFIO = GPIO5_HalfWord;
+		break;
 	default:
 		break;
 	}
@@ -147,6 +153,9 @@ static GPIO_Byte_TypeDef *FIO_ByteGetPointer(uint8_t portNum)
 		break;
 	case 4:
 		pFIO = GPIO4_Byte;
+		break;
+	case 5:
+		pFIO = GPIO5_Byte;
 		break;
 	default:
 		break;
