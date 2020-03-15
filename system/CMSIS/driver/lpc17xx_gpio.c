@@ -82,7 +82,7 @@ static LPC_GPIO_TypeDef *GPIO_GetPointer(uint8_t portNum)
 	case 4:
 		pGPIO = LPC_GPIO4;
 		break;
-  case 5:
+	case 5:
 		pGPIO = LPC_GPIO5;
 		break;
 	default:
