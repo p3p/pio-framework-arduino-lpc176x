@@ -68,6 +68,11 @@ using std::isinf;
 #define square(v) sq(v)
 #define constrain(value, arg_min, arg_max) ((value) < (arg_min) ? (arg_min) :((value) > (arg_max) ? (arg_max) : (value)))
 
+// Byte manipulation macros
+#define word(h, l)  ((uint8_t) ((h << 8) | l))
+#define lowByte(w)  ((uint8_t) ((w) & 0xff))
+#define highByte(w) ((uint8_t) ((w) >> 8))
+
 //Interrupts
 void cli(void); // Disable
 void sei(void); // Enable
