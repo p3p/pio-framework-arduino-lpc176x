@@ -158,12 +158,6 @@ constexpr pin_t digitalPinToInterrupt(const pin_t pin) { return pin; }
   return bs > 0 ? reading >> bs : reading << abs(bs);
 }
 
-// EEPROM
-void eeprom_write_byte(uint8_t *pos, unsigned char value);
-uint8_t eeprom_read_byte(uint8_t *pos);
-void eeprom_read_block (void *__dst, const void *__src, size_t __n);
-void eeprom_update_block (const void *__src, void *__dst, size_t __n);
-
 int32_t random(int32_t);
 int32_t random(int32_t, int32_t);
 void randomSeed(uint32_t);
