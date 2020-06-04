@@ -21,7 +21,7 @@
 
 namespace LPC176x {
 
-void pwm_init(const uint32_t frequency = 1000);
+void pwm_init(const uint32_t frequency = 50);
 bool pwm_attach_pin(const pin_t pin, const uint32_t value = 0);
 bool pwm_write(const pin_t pin, const uint32_t value);
 bool pwm_write_ratio(const pin_t pin, const uint8_t value);
