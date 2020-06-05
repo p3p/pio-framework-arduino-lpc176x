@@ -59,6 +59,7 @@
 
 ServoInfo_t Servo::servo_info[MAX_SERVOS];                  // static array of servo info structures
 uint8_t Servo::ServoCount = 0;                              // the total number of attached servos
+bool Servo::force_sw = false;
 
 #define US_TO_PULSE_WIDTH(p) p
 #define PULSE_WIDTH_TO_US(p) p
@@ -66,7 +67,8 @@ uint8_t Servo::ServoCount = 0;                              // the total number 
 #define SERVO_MIN() MIN_PULSE_WIDTH  // minimum value in uS for this servo
 #define SERVO_MAX() MAX_PULSE_WIDTH  // maximum value in uS for this servo
 
-Servo::Servo() {
+Servo::Servo(bool force_sw) {
+  this->force_sw = force_sw;
   if (ServoCount < MAX_SERVOS) {
     this->servoIndex = ServoCount++;                    // assign a servo index to this instance
     servo_info[this->servoIndex].pulse_width = US_TO_PULSE_WIDTH(DEFAULT_PULSE_WIDTH);   // store default values
@@ -79,7 +81,7 @@ int8_t Servo::attach(const pin_t pin) {
 }
 
 int8_t Servo::attach(const pin_t pin, const int min, const int max) {
-  if (this->servoIndex >= MAX_SERVOS || !LPC176x::pwm_attach_pin(pin, DEFAULT_PULSE_WIDTH)) return -1;
+  if (this->servoIndex >= MAX_SERVOS || !LPC176x::pwm_attach_pin(pin, DEFAULT_PULSE_WIDTH, this->force_sw)) return -1;
   servo_info[this->servoIndex].Pin.nbr = pin;
   servo_info[this->servoIndex].Pin.isActive = true;
   return this->servoIndex;
@@ -106,7 +108,7 @@ void Servo::writeMicroseconds(int value) {
     // ensure pulse width is valid
     value = std::clamp(value, SERVO_MIN(), SERVO_MAX()) - (TRIM_DURATION);
     servo_info[channel].pulse_width = value;
-    LPC176x::pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr);
+    LPC176x::pwm_attach_pin(servo_info[this->servoIndex].Pin.nbr, this->force_sw);
     LPC176x::pwm_write_us(servo_info[this->servoIndex].Pin.nbr, value);
   }
 }

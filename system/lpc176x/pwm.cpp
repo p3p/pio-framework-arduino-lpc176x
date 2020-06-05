@@ -31,20 +31,20 @@ void pwm_init(const uint32_t frequency) {
   SoftwarePWM::init(frequency);
 }
 
-bool pwm_attach_pin(const pin_t pin, const uint32_t value) {
+bool pwm_attached(const pin_t pin) {
+  return HardwarePWM::active(pin) || SoftwarePWM::active(pin);
+}
+
+bool pwm_attach_pin(const pin_t pin, const uint32_t value, const bool force_sw) {
+  if(pwm_attached(pin)) return true;    // already attached to any channel ?
+
   // Hardware PWM
-  if(HardwarePWM::active(pin)) return true;   // already attached to hardware channel?
-  if(HardwarePWM::attach(pin, value)) {       // hardware capable and channel requried by pin not in use,
-    return true;                              // attach successfuly so return
+  if(!force_sw && HardwarePWM::attach(pin, value)) {       // hardware capable and channel requried by pin not in use,
+    return true;                                           // attach successfuly so return
   }
 
   // Fall back on Timer3 based PWM
-  if(SoftwarePWM::active(pin)) return true;   // already attached on software pin
   return SoftwarePWM::attach(pin, value);     // last chance
-}
-
-bool pwm_attached(const pin_t pin) {
-  return HardwarePWM::active(pin) || SoftwarePWM::active(pin);
 }
 
 bool pwm_detach_pin(const pin_t pin) {
@@ -103,9 +103,9 @@ bool pwm_write_us(const pin_t pin, const uint32_t value) {
   return false;
 }
 
-bool pwm_set_frequency(const pin_t pin, const uint32_t frequency) {
+bool pwm_set_frequency(const pin_t pin, const uint32_t frequency, const bool force_sw) {
   if (!pwm_attached(pin)) {
-    pwm_attach_pin(pin);
+    pwm_attach_pin(pin, force_sw);
   }
 
   if (HardwarePWM::active(pin)) {
