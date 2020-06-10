@@ -103,8 +103,8 @@ public:
       PinCfg.Pinnum = 11;
       PINSEL_ConfigPin(&PinCfg);
     } else if (UARTx == LPC_UART3) {
-      // Initialize UART2 pin connect
-      PinCfg.Funcnum = 1;
+      // Initialize UART3 pin connect
+      PinCfg.Funcnum = 2;
       PinCfg.OpenDrain = 0;
       PinCfg.Pinmode = 0;
       PinCfg.Pinnum = 0;
