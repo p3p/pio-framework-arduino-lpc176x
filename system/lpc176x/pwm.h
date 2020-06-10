@@ -22,7 +22,8 @@
 namespace LPC176x {
 
 void pwm_init(const uint32_t frequency = 50);
-bool pwm_attach_pin(const pin_t pin, const uint32_t value = 0);
+bool pwm_attached(const pin_t pin);
+bool pwm_attach_pin(const pin_t pin, const uint32_t value = 0, const bool force_sw = false);
 bool pwm_write(const pin_t pin, const uint32_t value);
 bool pwm_write_ratio(const pin_t pin, const uint8_t value);
 bool pwm_write_ratio(const pin_t pin, const float value);
@@ -30,6 +31,6 @@ bool pwm_write_us(const pin_t pin, const uint32_t value);
 bool pwm_detach_pin(const pin_t pin);
 
 uint32_t pwm_get_period(const pin_t pin);
-bool pwm_set_frequency(const pin_t pin, const uint32_t frequency);
+bool pwm_set_frequency(const pin_t pin, const uint32_t frequency, const bool force_sw = false);
 
 } // LPC176x

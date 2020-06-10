@@ -53,7 +53,7 @@ typedef struct {
 
 class Servo {
   public:
-    Servo();
+    Servo(bool force_sw = false);
     int8_t attach(const pin_t pin);    // attach the given pin to the next free channel, set pinMode, return channel number (-1 on fail)
     int8_t attach(const pin_t pin, const int min, const int max); // as above but also sets min and max values for writes.
     void detach();
@@ -64,6 +64,7 @@ class Servo {
     bool attached();                   // return true if this servo is attached, otherwise false
 
   protected:
+    static bool force_sw;
     uint8_t servoIndex;               // index into the channel data for this servo
     static ServoInfo_t servo_info[MAX_SERVOS]; // static array of servo info structures
     static uint8_t ServoCount;             // the total number of attached servos
