@@ -98,14 +98,10 @@ public:
     LPC_PWM1->MCR = util::bit_value(1);
 
     // Set the period using channel 0 before enabling peripheral
-    LPC_PWM1->MR0 = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / frequency) - 1;
-    LPC_PWM1->LER = util::bit_value(0); // if only latching worked
+    LPC_PWM1->MR0 = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / frequency);
 
     // Enable PWM mode
-    // TODO: this is very unreliable appears to randomly miss latches thus not changing the duty cycle
-    // disabling PWM latch mode at least gives reliable (bit 3)
-    //LPC_PWM1->TCR = util::bitset_value(0, 3);      //  Turn on PWM latch mode and Enable counters
-    LPC_PWM1->TCR = util::bitset_value(0);
+    LPC_PWM1->TCR = util::bitset_value(0, 3);      //  Turn on PWM latch mode and Enable counters
   }
 
   [[nodiscard]] static constexpr bool available(const pin_t pin) noexcept {
@@ -122,14 +118,12 @@ public:
   }
 
   static inline void set_period(const uint32_t period) {
-    LPC_PWM1->TCR = util::bit_value(1);
-    LPC_PWM1->MR0 = period - 1;  // TC resets every period cycles
-    LPC_PWM1->LER = util::bit_value(0);
-    LPC_PWM1->TCR = util::bitset_value(0);
+    LPC_PWM1->MR0 = period;  // TC resets every period cycles
+    LPC_PWM1->LER |= util::bit_value(0);
   }
 
   static inline uint32_t get_period() {
-    return LPC_PWM1->MR0 + 1;
+    return LPC_PWM1->MR0;
   }
 
   static inline void set_us(const pin_t pin, const uint32_t value) {
@@ -138,19 +132,8 @@ public:
 
   // update the match register for a channel and set the latch to update on next period
   static inline void set_match(const pin_t pin, const uint32_t value) {
-    //work around for bug if MR1 == MR0
-    *match_register_ptr(pin) = value == LPC_PWM1->MR0 ? value + 1 : value;
-    // tried to work around latch issue by always setting all bits, was unsuccessful
-    LPC_PWM1->LER = util::bit_value(pin_has_pwm(pin));
-
-    // At 0 duty cycle hardware pwm outputs 1 cycle pulses
-    // Work around it by disabling the pwm output and setting the pin low util the duty cycle is updated
-    if(value == 0) {
-      set_idle(pin);
-    } else if(util::bit_test(idle_pins, get_pin_id(pin))) {
-      pin_enable_function(pin, pwm_function_index(pin));
-      util::bit_clear(idle_pins, get_pin_id(pin));
-    }
+    *match_register_ptr(pin) = value;
+    LPC_PWM1->LER |= util::bit_value(pin_has_pwm(pin));
   }
 
   static inline bool attach(const pin_t pin, const uint32_t value) {
