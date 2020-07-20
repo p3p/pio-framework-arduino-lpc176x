@@ -132,7 +132,8 @@ public:
 
   // update the match register for a channel and set the latch to update on next period
   static inline void set_match(const pin_t pin, const uint32_t value) {
-    *match_register_ptr(pin) = value;
+    //work around for bug if MR1 == MR0 from errata sheet
+    *match_register_ptr(pin) = value == LPC_PWM1->MR0 ? value + 1 : value;
     LPC_PWM1->LER |= util::bit_value(pin_has_pwm(pin));
   }
 
