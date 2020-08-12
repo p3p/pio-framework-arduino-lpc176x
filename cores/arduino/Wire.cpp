@@ -117,7 +117,7 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity) {
 
   // perform blocking read into buffer
   I2C_M_SETUP_Type transferMCfg;
-  transferMCfg.sl_addr7bit = address >> 1; // not sure about the right shift
+  transferMCfg.sl_addr7bit = address;
   transferMCfg.tx_data = NULL;
   transferMCfg.tx_length = 0;
   transferMCfg.rx_data = rxBuffer;
@@ -153,7 +153,7 @@ void TwoWire::beginTransmission(int address) {
 uint8_t TwoWire::endTransmission(void) {
   // transmit buffer (blocking)
   I2C_M_SETUP_Type transferMCfg;
-  transferMCfg.sl_addr7bit = txAddress >> 1; // not sure about the right shift
+  transferMCfg.sl_addr7bit = txAddress;
   transferMCfg.tx_data = txBuffer;
   transferMCfg.tx_length = txBufferLength;
   transferMCfg.rx_data = NULL;
