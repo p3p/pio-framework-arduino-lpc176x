@@ -73,45 +73,96 @@ public:
     if (Baudrate == baudrate) return; // No need to re-initialize
 
     if (UARTx == LPC_UART0) {
-      // Initialize UART0 pin connect
-      PinCfg.Funcnum = 1;
+      // Initialize UART0 pin connect 98 and 99
       PinCfg.OpenDrain = 0;
       PinCfg.Pinmode = 0;
-      PinCfg.Pinnum = 2;
+      PinCfg.Funcnum = 1;
       PinCfg.Portnum = 0;
+      PinCfg.Pinnum = 2;
       PINSEL_ConfigPin(&PinCfg);
       PinCfg.Pinnum = 3;
       PINSEL_ConfigPin(&PinCfg);
     } else if ((LPC_UART1_TypeDef *) UARTx == LPC_UART1) {
       // Initialize UART1 pin connect
-      PinCfg.Funcnum = 1;
       PinCfg.OpenDrain = 0;
       PinCfg.Pinmode = 0;
-      PinCfg.Pinnum = 15;
-      PinCfg.Portnum = 0;
-      PINSEL_ConfigPin(&PinCfg);
-      PinCfg.Pinnum = 16;
-      PINSEL_ConfigPin(&PinCfg);
+	  /* Because UARTs can be multiplexed to various pins and each board manufaturer can choose which pins will be used,
+	     The pins actually used can be defined with an additional symbol.
+		 
+		 For UART0: There is only one set of pins: pin 98 and 99, so no define needed
+
+		 For UART1: 			        default is pin 62 and 63
+					define UART1_PIN_75_74 to use  pin 75 and 74
+
+		 For UART2: 			        default is pin 48 and 49
+					define UART2_PIN_65_64 to use  pin 65 and 44
+
+		 For UART3: 			        default is pin 46 and 47
+					define UART3_PIN_7_6   to use  pin  7 and  6
+					define UART3_PIN_82_85 to use  pin 82 and 85
+	  */
+
+		                                
+	  #if defined(UART1_PIN_75_74)	//Uses the pins: 75/74
+		  PinCfg.Funcnum = 2;
+		  PinCfg.Portnum = 2;
+		  PinCfg.Pinnum = 0;
+		  PINSEL_ConfigPin(&PinCfg);
+		  PinCfg.Pinnum = 1;
+		  PINSEL_ConfigPin(&PinCfg);
+	  #else							//Uses the pins: 62/63						
+		  PinCfg.Funcnum = 1;
+		  PinCfg.Portnum = 0;
+		  PinCfg.Pinnum = 15;
+		  PINSEL_ConfigPin(&PinCfg);
+		  PinCfg.Pinnum = 16;
+		  PINSEL_ConfigPin(&PinCfg);
+	  #endif
     } else if (UARTx == LPC_UART2) {
       // Initialize UART2 pin connect
-      PinCfg.Funcnum = 1;
       PinCfg.OpenDrain = 0;
       PinCfg.Pinmode = 0;
-      PinCfg.Pinnum = 10;
-      PinCfg.Portnum = 0;
-      PINSEL_ConfigPin(&PinCfg);
-      PinCfg.Pinnum = 11;
-      PINSEL_ConfigPin(&PinCfg);
+	  #if defined(UART2_PIN_65_64)	//Uses the pins: 65/64
+		  PinCfg.Funcnum = 2;
+		  PinCfg.Portnum = 2;
+		  PinCfg.Pinnum = 8;
+		  PINSEL_ConfigPin(&PinCfg);
+		  PinCfg.Pinnum = 9;
+		  PINSEL_ConfigPin(&PinCfg);
+	  #else							//Uses the default pins: 48/49
+		  PinCfg.Funcnum = 1;
+		  PinCfg.Pinnum = 10;
+		  PinCfg.Portnum = 0;
+		  PINSEL_ConfigPin(&PinCfg);
+		  PinCfg.Pinnum = 11;
+		  PINSEL_ConfigPin(&PinCfg);
+	  #endif
     } else if (UARTx == LPC_UART3) {
       // Initialize UART3 pin connect
-      PinCfg.Funcnum = 2;
       PinCfg.OpenDrain = 0;
       PinCfg.Pinmode = 0;
-      PinCfg.Pinnum = 0;
-      PinCfg.Portnum = 0;
-      PINSEL_ConfigPin(&PinCfg);
-      PinCfg.Pinnum = 1;
-      PINSEL_ConfigPin(&PinCfg);
+	  #if defined(UART3_PIN_82_85)	//Uses the pins: 82/85
+		  PinCfg.Funcnum = 3;
+		  PinCfg.Portnum = 4;
+		  PinCfg.Pinnum = 28;
+		  PINSEL_ConfigPin(&PinCfg);
+		  PinCfg.Pinnum = 29;
+		  PINSEL_ConfigPin(&PinCfg);	  
+	  #elif defined(UART3_PIN_7_6)	//Uses the pins: 7/6
+		  PinCfg.Funcnum = 3;
+		  PinCfg.Portnum = 0;
+		  PinCfg.Pinnum = 25;
+		  PINSEL_ConfigPin(&PinCfg);
+		  PinCfg.Pinnum = 26;
+		  PINSEL_ConfigPin(&PinCfg);
+	  #else							//Uses the default pins: 46/47
+		  PinCfg.Funcnum = 2;
+		  PinCfg.Portnum = 0;
+		  PinCfg.Pinnum = 0;
+		  PINSEL_ConfigPin(&PinCfg);
+		  PinCfg.Pinnum = 1;
+		  PINSEL_ConfigPin(&PinCfg);
+	  #endif
     }
 
     /* Initialize UART Configuration parameter structure to default state:
