@@ -89,28 +89,28 @@ public:
 	  /* Because UARTs can be multiplexed to various pins and each board manufaturer can choose which pins will be used,
 	     The pins actually used can be defined with an additional symbol.
 		 
-		 For UART0: There is only one set of pins: pin 98 and 99, so no define needed
+		 For UART0: There is only one set of pins: pin 98 and 99, PORT 0-02/03, FUNC 1, so no define needed
 
-		 For UART1: 			        default is pin 62 and 63
-					define UART1_PIN_75_74 to use  pin 75 and 74
+		 For UART1: 			    default is pin 62 and 63, PORT 0-15/16, FUNC 1
+					define UART1_P2_00 to use  pin 75 and 74, PORT 2-00/01, FUNC 2
 
-		 For UART2: 			        default is pin 48 and 49
-					define UART2_PIN_65_64 to use  pin 65 and 44
+		 For UART2: 			    default is pin 48 and 49, PORT 0-10/11, FUNC 1
+					define UART2_P2_08 to use  pin 65 and 44, PORT 2-08/09, FUNC 2
 
-		 For UART3: 			        default is pin 46 and 47
-					define UART3_PIN_7_6   to use  pin  7 and  6
-					define UART3_PIN_82_85 to use  pin 82 and 85
+		 For UART3: 			    default is pin 46 and 47, PORT 0-00/01, FUNC 2
+					define UART3_P0_25 to use  pin  7 and  6, PORT 0-25/26, FUNC 3
+					define UART3_P4_28 to use  pin 82 and 85, PORT 4-28/29, FUNC 3
 	  */
 
 		                                
-	  #if defined(UART1_PIN_75_74)	//Uses the pins: 75/74
+	  #if defined(UART1_P2_00)	//Uses the pins: 75/74
 		  PinCfg.Funcnum = 2;
 		  PinCfg.Portnum = 2;
 		  PinCfg.Pinnum = 0;
 		  PINSEL_ConfigPin(&PinCfg);
 		  PinCfg.Pinnum = 1;
 		  PINSEL_ConfigPin(&PinCfg);
-	  #else							//Uses the pins: 62/63						
+	  #else					    //Uses the pins: 62/63						
 		  PinCfg.Funcnum = 1;
 		  PinCfg.Portnum = 0;
 		  PinCfg.Pinnum = 15;
@@ -122,14 +122,14 @@ public:
       // Initialize UART2 pin connect
       PinCfg.OpenDrain = 0;
       PinCfg.Pinmode = 0;
-	  #if defined(UART2_PIN_65_64)	//Uses the pins: 65/64
+	  #if defined(UART2_P2_08)	//Uses the pins: 65/64
 		  PinCfg.Funcnum = 2;
 		  PinCfg.Portnum = 2;
 		  PinCfg.Pinnum = 8;
 		  PINSEL_ConfigPin(&PinCfg);
 		  PinCfg.Pinnum = 9;
 		  PINSEL_ConfigPin(&PinCfg);
-	  #else							//Uses the default pins: 48/49
+	  #else						//Uses the default pins: 48/49
 		  PinCfg.Funcnum = 1;
 		  PinCfg.Pinnum = 10;
 		  PinCfg.Portnum = 0;
@@ -141,21 +141,21 @@ public:
       // Initialize UART3 pin connect
       PinCfg.OpenDrain = 0;
       PinCfg.Pinmode = 0;
-	  #if defined(UART3_PIN_82_85)	//Uses the pins: 82/85
+	  #if defined(UART3_P4_28)	//Uses the pins: 82/85
 		  PinCfg.Funcnum = 3;
 		  PinCfg.Portnum = 4;
 		  PinCfg.Pinnum = 28;
 		  PINSEL_ConfigPin(&PinCfg);
 		  PinCfg.Pinnum = 29;
 		  PINSEL_ConfigPin(&PinCfg);	  
-	  #elif defined(UART3_PIN_7_6)	//Uses the pins: 7/6
+	  #elif defined(UART3_P0_25) //Uses the pins: 7/6
 		  PinCfg.Funcnum = 3;
 		  PinCfg.Portnum = 0;
 		  PinCfg.Pinnum = 25;
 		  PINSEL_ConfigPin(&PinCfg);
 		  PinCfg.Pinnum = 26;
 		  PINSEL_ConfigPin(&PinCfg);
-	  #else							//Uses the default pins: 46/47
+	  #else						//Uses the default pins: 46/47
 		  PinCfg.Funcnum = 2;
 		  PinCfg.Portnum = 0;
 		  PinCfg.Pinnum = 0;
