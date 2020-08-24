@@ -284,8 +284,8 @@ Status GPDMA_Setup(GPDMA_Channel_CFG_Type *GPDMAChannelConfig)
 				= GPDMA_DMACCxControl_TransferSize((uint32_t)GPDMAChannelConfig->TransferSize) \
 						| GPDMA_DMACCxControl_SBSize((uint32_t)GPDMA_LUTPerBurst[GPDMAChannelConfig->DstConn]) \
 						| GPDMA_DMACCxControl_DBSize((uint32_t)GPDMA_LUTPerBurst[GPDMAChannelConfig->DstConn]) \
-						| GPDMA_DMACCxControl_SWidth((uint32_t)GPDMA_LUTPerWid[GPDMAChannelConfig->DstConn]) \
-						| GPDMA_DMACCxControl_DWidth((uint32_t)GPDMA_LUTPerWid[GPDMAChannelConfig->DstConn]) \
+						| GPDMA_DMACCxControl_SWidth(GPDMAChannelConfig->TransferWidth > 0 ? GPDMAChannelConfig->TransferWidth : (uint32_t)GPDMA_LUTPerWid[GPDMAChannelConfig->DstConn]) \
+						| GPDMA_DMACCxControl_DWidth(GPDMAChannelConfig->TransferWidth > 0 ? GPDMAChannelConfig->TransferWidth : (uint32_t)GPDMA_LUTPerWid[GPDMAChannelConfig->DstConn]) \
 						| GPDMA_DMACCxControl_SI \
 						| GPDMA_DMACCxControl_I;
 		break;
