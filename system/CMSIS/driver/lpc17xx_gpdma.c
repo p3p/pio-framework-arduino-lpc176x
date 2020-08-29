@@ -286,7 +286,7 @@ Status GPDMA_Setup(GPDMA_Channel_CFG_Type *GPDMAChannelConfig)
 						| GPDMA_DMACCxControl_DBSize((uint32_t)GPDMA_LUTPerBurst[GPDMAChannelConfig->DstConn]) \
 						| GPDMA_DMACCxControl_SWidth(GPDMAChannelConfig->TransferWidth > 0 ? GPDMAChannelConfig->TransferWidth : (uint32_t)GPDMA_LUTPerWid[GPDMAChannelConfig->DstConn]) \
 						| GPDMA_DMACCxControl_DWidth(GPDMAChannelConfig->TransferWidth > 0 ? GPDMAChannelConfig->TransferWidth : (uint32_t)GPDMA_LUTPerWid[GPDMAChannelConfig->DstConn]) \
-						| GPDMA_DMACCxControl_SI \
+						| GPDMAChannelConfig->MemoryIncrease \
 						| GPDMA_DMACCxControl_I;
 		break;
 	// Peripheral to memory

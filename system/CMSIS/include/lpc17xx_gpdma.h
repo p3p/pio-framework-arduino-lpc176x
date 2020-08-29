@@ -381,6 +381,12 @@ typedef struct {
 	uint32_t DMALLI;		/**< Linker List Item structure data address
 							if there's no Linker List, set as '0'
 							*/
+
+	uint32_t MemoryIncrease; /** Setup Memory Increase for GPDMA_TRANSFERTYPE_M2P
+								GPDMA_DMACCxControl_SI < Source increment
+								GPDMA_DMACCxControl_DI < Destination increment
+								Or both, or None
+							 */
 } GPDMA_Channel_CFG_Type;
 
 /**
