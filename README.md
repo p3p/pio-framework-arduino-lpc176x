@@ -6,12 +6,30 @@ The framework aims to eventually be Arduino API compatible, though Arduino libra
 this is a work in progress with most basic functionality available.
 
 ### Hardware Serial Ports
-| Port | TX | RX |
-| --- | --- | --- |
-| Serial  | P0_02 | P0_03 | 
-| Serial1 | P0_15 | P0_16 | 
-| Serial2 | P0_10 | P0_11 | 
-| Serial3 | P0_00 | P0_01 |  
+
+Without any #define, the pins are selected as with "no define".
+If your board uses other these default pins for RX/TX, set the appropriate #define(s) as in the tables below.
+
+| Serial | TX | RX | FUNCNUM |
+| --- | --- | --- | --- |
+| no define | P0_02 | P0_03 | 1 |
+ 
+
+| Serial1 | TX | RX | FUNCNUM |
+| --- | --- | --- | --- |
+| no define | P0_15 | P0_16 | 1 | 
+| UART1_P2_00 | P2_00 | P2_01 | 2 | 
+
+| Serial2 | TX | RX | FUNCNUM |
+| --- | --- | --- | --- |
+| no define | P0_10 | P0_11 | 1 | 
+| UART2_P2_08 | P2_08 | P2_09 | 2 |  
+
+| Serial3 | TX | RX | FUNCNUM |
+| --- | --- | --- | --- |
+| no define | P0_00 | P0_01 | 2 |
+| UART3_P0_25 | P0_25 | P0_26 | 3 |
+| UART3_P4_28 | P4_28 | P4_29 | 3 |
 
 ### AnalogRead  
 There are 8 ADC channels available  
