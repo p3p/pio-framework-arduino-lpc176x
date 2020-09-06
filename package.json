@@ -1,6 +1,14 @@
 {
-    "name": "framework-arduino-lpc176x",
-    "description": "Arduino Wiring-based Framework (LPC176x CMSIS 5)",
-    "url": "https://www.arduino.cc/en/Main/Software",
-    "version": "0.2.4"
+  "name": "framework-arduino-lpc176x",
+  "version": "0.2.4",
+  "description": "Arduino Wiring-based Framework for the LPC176x MCU series",
+  "keywords": [
+    "framework",
+    "arduino",
+    "nxp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/p3p/pio-framework-arduino-lpc176x"
+  }
 }
