@@ -40,6 +40,26 @@ extern "C" {
   #define SERIAL_RX_BUFFER_SIZE 256
 #endif
 
+#if !defined(LPC_UART_IRQ_PRIORITY)
+  #define LPC_UART_IRQ_PRIORITY 3
+#endif
+
+/*
+  UART pin configuration:
+
+  For UART0:                                 pin 98 and 99, PORT 0-02/03, FUNC 1
+
+  For UART1:                      default is pin 62 and 63, PORT 0-15/16, FUNC 1
+        define LPC_PINCFG_UART1_P2_00 to use pin 75 and 74, PORT 2-00/01, FUNC 2
+
+  For UART2:                      default is pin 48 and 49, PORT 0-10/11, FUNC 1
+        define LPC_PINCFG_UART2_P2_08 to use pin 65 and 44, PORT 2-08/09, FUNC 2
+
+  For UART3:                      default is pin 46 and 47, PORT 0-00/01, FUNC 2
+        define LPC_PINCFG_UART3_P0_25 to use pin  7 and  6, PORT 0-25/26, FUNC 3
+        define LPC_PINCFG_UART3_P4_28 to use pin 82 and 85, PORT 4-28/29, FUNC 3
+*/
+
 template <uint32_t RXB_SIZE = SERIAL_RX_BUFFER_SIZE, uint32_t TXB_SIZE = SERIAL_TX_BUFFER_SIZE>
 class HardwareSerial : public Stream {
 private:
@@ -86,83 +106,72 @@ public:
       // Initialize UART1 pin connect
       PinCfg.OpenDrain = 0;
       PinCfg.Pinmode = 0;
-	  /* Because UARTs can be multiplexed to various pins and each board manufaturer can choose which pins will be used,
-	     The pins actually used can be defined with an additional symbol.
-		 
-		 For UART0: There is only one set of pins: pin 98 and 99, PORT 0-02/03, FUNC 1, so no define needed
 
-		 For UART1: 			    default is pin 62 and 63, PORT 0-15/16, FUNC 1
-					define UART1_P2_00 to use  pin 75 and 74, PORT 2-00/01, FUNC 2
+      #if defined(LPC_PINCFG_UART1_P2_00)
+        PinCfg.Funcnum = 2;
+        PinCfg.Portnum = 2;
+        PinCfg.Pinnum = 0;
+        PINSEL_ConfigPin(&PinCfg);
+        PinCfg.Pinnum = 1;
+        PINSEL_ConfigPin(&PinCfg);
+      #else
+        PinCfg.Funcnum = 1;
+        PinCfg.Portnum = 0;
+        PinCfg.Pinnum = 15;
+        PINSEL_ConfigPin(&PinCfg);
+        PinCfg.Pinnum = 16;
+        PINSEL_ConfigPin(&PinCfg);
+      #endif
 
-		 For UART2: 			    default is pin 48 and 49, PORT 0-10/11, FUNC 1
-					define UART2_P2_08 to use  pin 65 and 44, PORT 2-08/09, FUNC 2
-
-		 For UART3: 			    default is pin 46 and 47, PORT 0-00/01, FUNC 2
-					define UART3_P0_25 to use  pin  7 and  6, PORT 0-25/26, FUNC 3
-					define UART3_P4_28 to use  pin 82 and 85, PORT 4-28/29, FUNC 3
-	  */
-
-		                                
-	  #if defined(UART1_P2_00)	//Uses the pins: 75/74
-		  PinCfg.Funcnum = 2;
-		  PinCfg.Portnum = 2;
-		  PinCfg.Pinnum = 0;
-		  PINSEL_ConfigPin(&PinCfg);
-		  PinCfg.Pinnum = 1;
-		  PINSEL_ConfigPin(&PinCfg);
-	  #else					    //Uses the pins: 62/63						
-		  PinCfg.Funcnum = 1;
-		  PinCfg.Portnum = 0;
-		  PinCfg.Pinnum = 15;
-		  PINSEL_ConfigPin(&PinCfg);
-		  PinCfg.Pinnum = 16;
-		  PINSEL_ConfigPin(&PinCfg);
-	  #endif
     } else if (UARTx == LPC_UART2) {
       // Initialize UART2 pin connect
       PinCfg.OpenDrain = 0;
       PinCfg.Pinmode = 0;
-	  #if defined(UART2_P2_08)	//Uses the pins: 65/64
-		  PinCfg.Funcnum = 2;
-		  PinCfg.Portnum = 2;
-		  PinCfg.Pinnum = 8;
-		  PINSEL_ConfigPin(&PinCfg);
-		  PinCfg.Pinnum = 9;
-		  PINSEL_ConfigPin(&PinCfg);
-	  #else						//Uses the default pins: 48/49
-		  PinCfg.Funcnum = 1;
-		  PinCfg.Pinnum = 10;
-		  PinCfg.Portnum = 0;
-		  PINSEL_ConfigPin(&PinCfg);
-		  PinCfg.Pinnum = 11;
-		  PINSEL_ConfigPin(&PinCfg);
-	  #endif
+
+      #if defined(LPC_PINCFG_UART2_P2_08)
+        PinCfg.Funcnum = 2;
+        PinCfg.Portnum = 2;
+        PinCfg.Pinnum = 8;
+        PINSEL_ConfigPin(&PinCfg);
+        PinCfg.Pinnum = 9;
+        PINSEL_ConfigPin(&PinCfg);
+      #else
+        PinCfg.Funcnum = 1;
+        PinCfg.Pinnum = 10;
+        PinCfg.Portnum = 0;
+        PINSEL_ConfigPin(&PinCfg);
+        PinCfg.Pinnum = 11;
+        PINSEL_ConfigPin(&PinCfg);
+      #endif
+
     } else if (UARTx == LPC_UART3) {
       // Initialize UART3 pin connect
       PinCfg.OpenDrain = 0;
       PinCfg.Pinmode = 0;
-	  #if defined(UART3_P4_28)	//Uses the pins: 82/85
-		  PinCfg.Funcnum = 3;
-		  PinCfg.Portnum = 4;
-		  PinCfg.Pinnum = 28;
-		  PINSEL_ConfigPin(&PinCfg);
-		  PinCfg.Pinnum = 29;
-		  PINSEL_ConfigPin(&PinCfg);	  
-	  #elif defined(UART3_P0_25) //Uses the pins: 7/6
-		  PinCfg.Funcnum = 3;
-		  PinCfg.Portnum = 0;
-		  PinCfg.Pinnum = 25;
-		  PINSEL_ConfigPin(&PinCfg);
-		  PinCfg.Pinnum = 26;
-		  PINSEL_ConfigPin(&PinCfg);
-	  #else						//Uses the default pins: 46/47
-		  PinCfg.Funcnum = 2;
-		  PinCfg.Portnum = 0;
-		  PinCfg.Pinnum = 0;
-		  PINSEL_ConfigPin(&PinCfg);
-		  PinCfg.Pinnum = 1;
-		  PINSEL_ConfigPin(&PinCfg);
-	  #endif
+
+      #if defined(LPC_PINCFG_UART3_P4_28)
+        PinCfg.Funcnum = 3;
+        PinCfg.Portnum = 4;
+        PinCfg.Pinnum = 28;
+        PINSEL_ConfigPin(&PinCfg);
+        PinCfg.Pinnum = 29;
+        PINSEL_ConfigPin(&PinCfg);
+      #elif defined(LPC_PINCFG_UART3_P0_25)
+        PinCfg.Funcnum = 3;
+        PinCfg.Portnum = 0;
+        PinCfg.Pinnum = 25;
+        PINSEL_ConfigPin(&PinCfg);
+        PinCfg.Pinnum = 26;
+        PINSEL_ConfigPin(&PinCfg);
+      #else
+        PinCfg.Funcnum = 2;
+        PinCfg.Portnum = 0;
+        PinCfg.Pinnum = 0;
+        PINSEL_ConfigPin(&PinCfg);
+        PinCfg.Pinnum = 1;
+        PINSEL_ConfigPin(&PinCfg);
+      #endif
+
     }
 
     /* Initialize UART Configuration parameter structure to default state:
@@ -192,19 +201,19 @@ public:
 
     // Set proper priority and enable interrupts
     if (UARTx == LPC_UART0) {
-      NVIC_SetPriority(UART0_IRQn, NVIC_EncodePriority(0, 3, 0));
+      NVIC_SetPriority(UART0_IRQn, NVIC_EncodePriority(0, LPC_UART_IRQ_PRIORITY, 0));
       NVIC_EnableIRQ(UART0_IRQn);
     }
     else if ((LPC_UART1_TypeDef *) UARTx == LPC_UART1) {
-      NVIC_SetPriority(UART1_IRQn, NVIC_EncodePriority(0, 3, 0));
-     NVIC_EnableIRQ(UART1_IRQn);
+      NVIC_SetPriority(UART1_IRQn, NVIC_EncodePriority(0, LPC_UART_IRQ_PRIORITY, 0));
+      NVIC_EnableIRQ(UART1_IRQn);
     }
     else if (UARTx == LPC_UART2) {
-      NVIC_SetPriority(UART2_IRQn, NVIC_EncodePriority(0, 3, 0));
+      NVIC_SetPriority(UART2_IRQn, NVIC_EncodePriority(0, LPC_UART_IRQ_PRIORITY, 0));
       NVIC_EnableIRQ(UART2_IRQn);
     }
     else if (UARTx == LPC_UART3) {
-      NVIC_SetPriority(UART3_IRQn, NVIC_EncodePriority(0, 3, 0));
+      NVIC_SetPriority(UART3_IRQn, NVIC_EncodePriority(0, LPC_UART_IRQ_PRIORITY, 0));
       NVIC_EnableIRQ(UART3_IRQn);
     }
 
