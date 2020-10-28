@@ -443,7 +443,7 @@ BYTE send_cmd (		/* Return value: R1 resp (bit7==1:Failed to send) */
 /* Initialize disk drive                                                 */
 /*-----------------------------------------------------------------------*/
 
-DSTATUS disk_initialize (
+__attribute__(( weak )) DSTATUS disk_initialize (
 	BYTE drv		/* Physical drive number (0) */
 )
 {
@@ -501,7 +501,7 @@ DSTATUS disk_initialize (
 /* Get disk status                                                       */
 /*-----------------------------------------------------------------------*/
 
-DSTATUS disk_status (
+__attribute__(( weak )) DSTATUS disk_status (
 	BYTE drv		/* Physical drive number (0) */
 )
 {
@@ -516,7 +516,7 @@ DSTATUS disk_status (
 /* Read sector(s)                                                        */
 /*-----------------------------------------------------------------------*/
 
-DRESULT disk_read (
+__attribute__(( weak )) DRESULT disk_read (
 	BYTE drv,		/* Physical drive number (0) */
 	BYTE *buff,		/* Pointer to the data buffer to store read data */
 	DWORD sector,	/* Start sector number (LBA) */
@@ -550,7 +550,7 @@ DRESULT disk_read (
 /*-----------------------------------------------------------------------*/
 
 #if _DISKIO_WRITE
-DRESULT disk_write (
+__attribute__(( weak )) DRESULT disk_write (
 	BYTE drv,			/* Physical drive number (0) */
 	const BYTE *buff,	/* Ponter to the data to write */
 	DWORD sector,		/* Start sector number (LBA) */
@@ -592,7 +592,7 @@ DRESULT disk_write (
 
 #if _DISKIO_IOCTL
 
-DRESULT disk_ioctl (
+__attribute__(( weak )) DRESULT disk_ioctl (
 	BYTE drv,		/* Physical drive number (0) */
 	BYTE cmd,		/* Control command code */
 	void *buff		/* Pointer to the conrtol data */
