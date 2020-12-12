@@ -1,6 +1,6 @@
 {
   "name": "framework-arduino-lpc176x",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Arduino Wiring-based Framework for the LPC176x MCU series",
   "keywords": [
     "framework",
