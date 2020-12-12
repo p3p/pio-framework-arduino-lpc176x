@@ -516,9 +516,9 @@ int32_t I2C_MasterHanleStates(LPC_I2C_TypeDef  *I2Cx, uint32_t CodeStatus, I2C_M
 			Ret = I2C_BYTE_RECV;
 			break;
 		case I2C_I2STAT_M_RX_DAT_ACK:
-			if (TransferCfg->rx_count <TransferCfg->rx_length)
+			if (TransferCfg->rx_count < TransferCfg->rx_length)
 			{
-				if (TransferCfg->rx_count < (TransferCfg->rx_length - 2))
+				if (TransferCfg->rx_count < (TransferCfg->rx_length - 1))
 				{
 					I2C_GetByte(I2Cx, &tmp, TRUE);
 
