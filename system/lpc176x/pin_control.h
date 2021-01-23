@@ -231,7 +231,7 @@ private:
   }
 
   [[gnu::always_inline]] constexpr bool valid_pin() const {
-    return (gpio_reg_id == 0 && ((gpio_reg_bit >= 10 )) ||
+    return (gpio_reg_id == 0 && (gpio_reg_bit >= 10 ) && gpio_reg_bit!=31) ||
             (gpio_reg_id == 1 && (gpio_reg_bit <= 31)) ||
             (gpio_reg_id == 2 &&  (gpio_reg_bit <= 31)) ||
             (gpio_reg_id == 3 && (gpio_reg_bit != 18 )) ||
