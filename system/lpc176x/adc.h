@@ -196,7 +196,7 @@ struct  adc_control {
   }
 };
 
-extern adc_control& adc_hardware;
+extern adc_control adc_hardware;
 
 //ADC_MEDIAN_FILTER_SIZE (23)
 // Higher values increase step delay (phase shift),
