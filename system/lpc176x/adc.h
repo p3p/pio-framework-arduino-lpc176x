@@ -150,7 +150,7 @@ struct  adc_control {
     return util::bitset_get_value(adc_reg().status, 1, 16);
   }
 
-  void init() {
+  [[gnu::noinline]] void init() {
     LPC_SC->PCONP |= (1 << 12);      // Enable CLOCK for internal ADC controller
     LPC_SC->PCLKSEL0 &= ~(0x3 << 24);
     LPC_SC->PCLKSEL0 |= (0x1 << 24); // 0: 25MHz, 1: 100MHz, 2: 50MHz, 3: 12.5MHZ to ADC clock divider
