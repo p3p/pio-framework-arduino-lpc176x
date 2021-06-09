@@ -50,7 +50,6 @@ class HardwarePWM {
   // update the bitset an activate hardware pwm channel for output
   static inline void activate_channel(const pin_t pin) {
     util::bit_set(active_pins, get_pin_id(pin));         // mark the pin as active
-    util::bit_clear(idle_pins, get_pin_id(pin));
     util::bit_set(LPC_PWM1->PCR, 8 + pin_has_pwm(pin));  // turn on the pins PWM output (8 offset + PWM channel)
     pin_enable_pwm(pin);
   }
@@ -61,14 +60,6 @@ class HardwarePWM {
     if(!channel_active(pin)) util::bit_clear(LPC_PWM1->PCR, 8 + pin_has_pwm(pin)); // turn off the PWM output
   }
 
-  // update the bitset and deactivate the hardware pwm channel
-  static inline void set_idle(const pin_t pin) {
-    gpio_set_output(pin); // used when at 0 duty cycle
-    util::bit_set(idle_pins, get_pin_id(pin));      // mark pin as inactive
-    pin_enable_function(pin, LPC176x::Function::GPIO);
-    gpio_clear(pin);
-  }
-
     // return true if a pwm channel is already attached to a pin
   [[nodiscard]] static constexpr bool channel_active(const pin_t pin) noexcept {
     const uint32_t channel = pin_has_pwm(pin) - 1;
@@ -77,7 +68,7 @@ class HardwarePWM {
 
 public:
   //static void init(const uint32_t prescale, const uint32_t period) {
-  static void init(const uint32_t frequency) {
+  [[gnu::noinline]] static void init(const uint32_t frequency) {
     // Power on the peripheral
     CLKPWR_ConfigPPWR (CLKPWR_PCONP_PCPWM1, ENABLE);
     CLKPWR_SetPCLKDiv (CLKPWR_PCLKSEL_PWM1, CLKPWR_PCLKSEL_CCLK_DIV_4);
@@ -99,9 +90,9 @@ public:
 
     // Set the period using channel 0 before enabling peripheral
     LPC_PWM1->MR0 = (CLKPWR_GetPCLK(CLKPWR_PCLKSEL_PWM1) / frequency) - 1;
-    
-    //  Enable Counters(bit0) & Turn on PWM Mode(bit3) 
-    LPC_PWM1->TCR = util::bitset_value(0, 3);      
+
+    // Enable Counters(bit0) & Turn on PWM Mode(bit3)
+    LPC_PWM1->TCR = util::bitset_value(0, 3);
   }
 
   [[nodiscard]] static constexpr bool available(const pin_t pin) noexcept {
@@ -118,14 +109,14 @@ public:
   }
 
   static inline void set_period(const uint32_t period) {
-    LPC_PWM1->TCR = util::bit_value(1); 
-    LPC_PWM1->MR0 = period - 1;  // TC resets every period cycles (0 counts so remove 1)
-    LPC_PWM1->LER = util::bitset_value(0); // Set Latch on MR0  
-    LPC_PWM1->TCR = util::bitset_value(0, 3); //  Turn on PWM Mode(bit3) and Enable Counters(bit0)
+    LPC_PWM1->TCR = util::bit_value(1);
+    LPC_PWM1->MR0 = period - 1;               // TC resets every period cycles (0 counts so remove 1)
+    LPC_PWM1->LER = util::bitset_value(0);    // Set Latch on MR0
+    LPC_PWM1->TCR = util::bitset_value(0, 3); // Turn on PWM Mode(bit3) and Enable Counters(bit0)
   }
 
   static inline uint32_t get_period() {
-    return LPC_PWM1->MR0 + 1; // Add 1 to reflect 0 count.              
+    return LPC_PWM1->MR0 + 1; // Add 1 to reflect 0 count.
   }
 
   static inline void set_us(const pin_t pin, const uint32_t value) {
@@ -134,17 +125,8 @@ public:
 
   // update the match register for a channel and set the latch to update on next period
   static inline void set_match(const pin_t pin, const uint32_t value) {
-    //work around for bug if MRn == MR0
-    *match_register_ptr(pin) = value == LPC_PWM1->MR0 ? value + 1 : value;
-    LPC_PWM1->LER |= util::bit_value(pin_has_pwm(pin)); // Enable Latch for MRn channel
-    // At 0 duty cycle hardware pwm outputs 1 cycle pulses
-    // Work around it by disabling the pwm output and setting the pin low util the duty cycle is updated
-    if(value == 0) {
-      set_idle(pin);
-    } else if(util::bit_test(idle_pins, get_pin_id(pin))) {
-      pin_enable_function(pin, pwm_function_index(pin));
-      util::bit_clear(idle_pins, get_pin_id(pin));
-    }
+    *match_register_ptr(pin) = value == LPC_PWM1->MR0 ? value + 1 : value; // work around for bug if MRn == MR0
+    LPC_PWM1->LER |= util::bit_value(pin_has_pwm(pin));                    // Enable Latch for MRn channel
   }
 
   static inline bool attach(const pin_t pin, const uint32_t value) {
@@ -167,7 +149,6 @@ public:
 private:
   // 32bit bitset used to track whether a pin is activly using hardware pwm
   static uint32_t active_pins;
-  static uint32_t idle_pins;
 };
 }
 
