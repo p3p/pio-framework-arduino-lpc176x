@@ -29,6 +29,7 @@
 #include <Stream.h>
 
 extern "C" {
+  #include <lpc17xx_clkpwr.h>
   #include <lpc17xx_uart.h>
   #include "lpc17xx_pinsel.h"
 }
@@ -102,6 +103,7 @@ public:
       PINSEL_ConfigPin(&PinCfg);
       PinCfg.Pinnum = 3;
       PINSEL_ConfigPin(&PinCfg);
+      CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_UART0, CLKPWR_PCLKSEL_CCLK_DIV_1);
     } else if ((LPC_UART1_TypeDef *) UARTx == LPC_UART1) {
       // Initialize UART1 pin connect
       PinCfg.OpenDrain = 0;
@@ -122,7 +124,7 @@ public:
         PinCfg.Pinnum = 16;
         PINSEL_ConfigPin(&PinCfg);
       #endif
-
+      CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_UART1, CLKPWR_PCLKSEL_CCLK_DIV_1);
     } else if (UARTx == LPC_UART2) {
       // Initialize UART2 pin connect
       PinCfg.OpenDrain = 0;
@@ -143,7 +145,7 @@ public:
         PinCfg.Pinnum = 11;
         PINSEL_ConfigPin(&PinCfg);
       #endif
-
+      CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_UART2, CLKPWR_PCLKSEL_CCLK_DIV_1);
     } else if (UARTx == LPC_UART3) {
       // Initialize UART3 pin connect
       PinCfg.OpenDrain = 0;
@@ -171,7 +173,7 @@ public:
         PinCfg.Pinnum = 1;
         PINSEL_ConfigPin(&PinCfg);
       #endif
-
+      CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_UART3, CLKPWR_PCLKSEL_CCLK_DIV_1);
     }
 
     /* Initialize UART Configuration parameter structure to default state:
