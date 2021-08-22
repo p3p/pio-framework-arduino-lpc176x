@@ -121,8 +121,8 @@ void analogReference(uint8_t);
 void analogReadResolution(uint8_t resolution);
 uint8_t analogReadResolution();
 
-constexpr uint16_t NUM_DIGITAL_PINS = 160;
-constexpr uint16_t NUM_ANALOG_INPUTS = LPC176x::analog_input_count;
+#define NUM_DIGITAL_PINS 160
+#define NUM_ANALOG_INPUTS 8
 
 // Get the digital pin for an analog index
 constexpr pin_t analogInputToDigitalPin(const int8_t channel) {
