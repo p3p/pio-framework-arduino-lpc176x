@@ -125,10 +125,7 @@ uint8_t analogReadResolution();
 #define NUM_ANALOG_INPUTS 8
 
 // Get the digital pin for an analog index
-constexpr pin_t analogInputToDigitalPin(const int8_t channel) {
-  return LPC176x::pin_type::index_from_adc_channnel(channel);
-}
-
+constexpr pin_t analogInputToDigitalPin(const pin_t pin) { return pin; }
 constexpr pin_t digitalPinToInterrupt(const pin_t pin) { return pin; }
 
 
