@@ -155,7 +155,7 @@ public:
     return buffered;
   }
 
-  size_t write(char* src, size_t length) {
+  size_t write(const char* src, size_t length) {
     size_t buffered = transmit_buffer.write((uint8_t*)src, length);
     const uint32_t usb_tx_timeout = millis() + USBCDCTIMEOUT;
     while (buffered != length && LPC176x::util::pending(millis(), usb_tx_timeout)) {
