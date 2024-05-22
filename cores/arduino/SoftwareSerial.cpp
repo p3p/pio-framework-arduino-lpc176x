@@ -35,7 +35,9 @@
 
 
 #define FORCE_BAUD_RATE 19200
-#define INTERRUPT_PRIORITY 0
+#ifndef LPC_SWSERIAL_IRQ_PRIORITY
+  #define LPC_SWSERIAL_IRQ_PRIORITY 1
+#endif
 #define OVERSAMPLE 3
 //
 // Statics
@@ -274,7 +276,7 @@ void SoftwareSerial::begin(long speed) {
   _speed = speed;
   if (!initialised) {
     RIT_Init(LPC_RIT);
-    NVIC_SetPriority(RIT_IRQn, NVIC_EncodePriority(0, INTERRUPT_PRIORITY, 0));
+    NVIC_SetPriority(RIT_IRQn, NVIC_EncodePriority(0, LPC_SWSERIAL_IRQ_PRIORITY, 0));
     initialised = true;
   }
   if (!_half_duplex) {
