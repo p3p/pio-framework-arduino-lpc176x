@@ -53,7 +53,7 @@ enum struct Sense_KEY : uint8_t {
 };
 
 enum struct Sense_ASC : uint8_t {
-  NONE = 0x0,
+  DISABLED = 0x0,
   LOGICAL_UNIT_NOT_READY = 0x04,
   CANNOT_READ_MEDIUM = 0x30,
   MEDIUM_NOT_PRESENT = 0x3A,
@@ -83,7 +83,7 @@ struct Sense {
     reset();
   }
 
-  void set(Sense_KEY key_val, Sense_ASC asc_val = Sense_ASC::NONE, Sense_ASCQ ascq_val = Sense_ASCQ::REASON_UNKNOWN) {
+  void set(Sense_KEY key_val, Sense_ASC asc_val = Sense_ASC::DISABLED, Sense_ASCQ ascq_val = Sense_ASCQ::REASON_UNKNOWN) {
     key = key_val;
     asc = asc_val;
     ascq = ascq_val;
@@ -91,7 +91,7 @@ struct Sense {
 
   void reset() {
     key = Sense_KEY::NO_SENSE;
-    asc = Sense_ASC::NONE;
+    asc = Sense_ASC::DISABLED;
     ascq = Sense_ASCQ::REASON_UNKNOWN;
   }
 
