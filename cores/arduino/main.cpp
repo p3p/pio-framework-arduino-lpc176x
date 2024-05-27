@@ -14,10 +14,17 @@ extern void setup();
 extern void loop();
 
 extern "C" {
-  volatile uint64_t _millis;
+  [[gnu::section(".noinit")]]
+  volatile uint32_t _millis;
+
+  [[gnu::section(".noinit")]]
+  volatile static uint32_t _microsPer65536Ticks; // Units: us / (2^16 ticks)
 
   uint32_t SysTick_Config(uint32_t ticks) {
     if (ticks > SysTick_LOAD_RELOAD_Msk) return 1;
+
+    // Works even at 16Ghz, the theoretical max allowed by SysTick being a 2^24 timer
+    _microsPer65536Ticks = (1000 << 16) / ticks;
 
     SysTick->LOAD = (ticks & SysTick_LOAD_RELOAD_Msk) - 1;        // Set reload register
     SysTick->VAL  = 0;                                            // Load the SysTick Counter Value
@@ -39,6 +46,14 @@ extern "C" {
     _millis = 0;                            // Initialise the millisecond counter value;
     SysTick_Config(SystemCoreClock / 1000); // Start millisecond global counter
   }
+}
+
+uint32_t millis() {
+  return _millis;
+}
+
+uint32_t micros() {
+  return (_millis * 1000) + (((SysTick->LOAD - SysTick->VAL) * _microsPer65536Ticks) >> 16);
 }
 
 int main(void) {
