@@ -31,8 +31,6 @@
 
 #include <Arduino.h>
 
-extern uint64_t _millis;
-
 // Interrupts
 void cli(void) { __disable_irq(); } // Disable
 void sei(void) { __enable_irq(); }  // Enable
@@ -43,14 +41,6 @@ void interrupts() { __enable_irq(); }  // Enable
 // Time functions
 void _delay_ms(const int delay_ms) {
   delay(delay_ms);
-}
-
-uint32_t millis() {
-  return _millis;
-}
-
-uint32_t micros() {
-  return (_millis * 1000) + ((SysTick->LOAD - SysTick->VAL) / (SystemCoreClock / 1000000) );
 }
 
 // This is required for some Arduino libraries we are using
@@ -89,7 +79,7 @@ void analogWrite(pin_t pin, int pwm_value) {  // 1 - 254: pwm_value, 0: LOW, 255
   }
 }
 
-uint8_t analog_read_resolution = 10;
+volatile static uint8_t analog_read_resolution = 10;
 void analogReadResolution(uint8_t resolution) {
   analog_read_resolution = resolution > 32 ? 32 : resolution;
 }
