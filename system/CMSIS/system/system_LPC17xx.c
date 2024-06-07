@@ -559,15 +559,17 @@ void SystemInit (void)
 
   LPC_SC->CCLKCFG   = 0x00000002;       /* Setup CPU Clock Divider            */
 
-  if(isLPC1769()) {
-    LPC_SC->PLL0CFG   = 0x0000000E;     /* configure PLL0                     */
-    LPC_SC->PLL0FEED  = 0xAA;
-    LPC_SC->PLL0FEED  = 0x55;
-  } else {
-    LPC_SC->PLL0CFG   = 0x00010018;     // 100MHz
-    LPC_SC->PLL0FEED  = 0xAA;
-    LPC_SC->PLL0FEED  = 0x55;
-  }
+  #if F_CPU == 120000000 && MCU_LPC1769
+    LPC_SC->PLL0CFG = 0x0000000E;       /* configure PLL0                     */
+  #elif F_CPU == 100000000
+    LPC_SC->PLL0CFG = 0x00010018;
+  #elif F_CPU == 96000000
+    LPC_SC->PLL0CFG = 0x0000000B;
+  #else
+    #error "The configured cpu frequency is not supported"
+  #endif
+  LPC_SC->PLL0FEED  = 0xAA;
+  LPC_SC->PLL0FEED  = 0x55;
 
   LPC_SC->PLL0CON   = 0x01;             /* PLL0 Enable                        */
   LPC_SC->PLL0FEED  = 0xAA;
