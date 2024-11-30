@@ -74,7 +74,7 @@ struct pin_type {
     return *reinterpret_cast<gpio_block*>(gpio_address());
   }
   [[gnu::always_inline]] inline void toggle() {
-    gpio_reg().reg_control ^= gpio_mask();
+    gpio_reg().reg_control = gpio_reg().reg_set ^ gpio_mask();
   }
   [[gnu::always_inline]] inline void set() {
     gpio_reg().reg_set = gpio_mask();
